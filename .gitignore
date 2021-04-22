@@ -1,0 +1,6 @@
+# Untracked files:
+*.o
+.vscode/*
+travelMonitor
+Monitor
+input_dir/*

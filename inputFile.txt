@@ -1,0 +1,50 @@
+1231 Andrew Moore Greece 30 Marburg YES 01-05-2019
+1231 Andrew Moore Greece 30 Guaroa NO
+2 David Young Yemen 4 HPV NO
+3 Wyatt Rivera Yemen 113 Anthrax YES 06-06-2043
+3 Wyatt Rivera Yemen 113 Anthrax NO
+3 Wyatt Rivera Yemen 113 Hanta NO
+3 Wyatt Rivera Yemen 113 COVID-19 NO
+445 Dylan Martin Greece 10 COVID-19 NO
+445 Dylan Martin Greece 10 Rabies NO
+2 David Young Yemen 4 Hepatitis-B NO
+445 Dylan Martin Greece 10 Ebola YES 18-02-2008
+445 Dylan Martin Greece 10 Rabies YES 21-01-2034
+5 Joseph Hernandez Greece 49 Hepatitis-C YES 17-12-2010
+5 Joseph Hernandez Greece 49 Hanta YES 06-03-2029
+6 Caleb Brown Zimbabwe 21 Hepatitis-D YES 23-10-2008
+6 Caleb Brown Zimbabwe 21 HIV NO
+6 Caleb Brown Zimbabwe 21 Hepatitis-E YES 23-07-2015
+6 Caleb Brown Zimbabwe 21 Hepatitis-B YES 13-01-2048
+7 Benjamin Martinez Zambia 24 Hanta NO
+7 Benjamin Martinez Zambia 24 Ebola YES 02-01-2011
+7 Benjamin Martinez Zambia 24 Guaroa YES 12-09-2030
+8 Dylan Jones Zambia 107 Marburg NO
+8 Dylan Jones Zambia 107 Hepatitis-A NO
+8 Dylan Jones Zambia 107 Flu YES 01-07-2037
+9 Christopher Smith Greece 71 Dengue NO
+9 Christopher Smith Greece 71 Anthrax YES 27-04-2011
+9 Christopher Smith Greece 71 Dengue NO
+9 Christopher Smith Greece 71 Typhus NO
+9 Christopher Smith Greece 71 Junin YES 27-11-2032
+10 Mason Thomas Zambia 108 Rabies NO
+10 Mason Thomas Zambia 108 Hepatitis-C YES 21-09-2001
+11 Logan Clark Zambia 20 Typhus NO
+11 Logan Clark Zambia 20 HIV YES 12-07-2022
+12 Elijah Taylor Zimbabwe 10 COVID-19 NO
+12 Elijah Taylor Zimbabwe 10 Hepatitis-E NO
+12 Elijah Taylor Zimbabwe 10 Hepatitis-E YES 16-02-2002
+12 Elijah Taylor Zimbabwe 10 Guaroa YES 05-09-2037
+13 Ezra Taylor Yemen 90 Junin NO
+14 Nathan Martinez Zambia 97 Hepatitis-B NO
+14 Nathan Martinez Zambia 97 Hanta NO
+14 Nathan Martinez Zambia 97 COVID-19 YES 16-05-2001
+15 Owen Roberts Greece 56 Junin YES 09-10-2018
+15 Owen Roberts Greece 56 Ebola YES 19-02-2010
+16 Ryan Campbell Yemen 109 Hepatitis-D NO
+16 Ryan Campbell Yemen 109 Marburg YES 05-06-2009
+16 Ryan Campbell Yemen 109 Guaroa NO
+17 Lincoln Wilson Yemen 103 Dengue NO
+18 Oliver Torres Zimbabwe 28 Hepatitis-E NO
+18 Oliver Torres Zimbabwe 28 Flu YES 23-05-2029
+19 James Roberts Zimbabwe 42 Dengue YES 28-04-2002
