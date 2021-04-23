@@ -40,22 +40,12 @@ fi
 inputFile=$1
 input_dir=$2
 numFilesPerDirectory=$3
-
-# echo $inputFile
-# echo $input_dir
-# echo $numFilesPerDirectory
-
-
-
-# Create parent directory
-# mkdir ./$input_dir
-
 # Store all countries in an array
 countries=()
 
-# Check if country already stored
+# Check if country already stored in array
 country_exists() {
-    found=0
+    local found=0
     for each in "${countries[@]}"
     do
         if [[ $1 == $each ]]
@@ -67,118 +57,49 @@ country_exists() {
     echo $found
 }
 
-i=0
-while read -r line
-do
-    # Country resides on the 4th column of each line
-    x=$(echo $line | awk '{print $4}')
-    # Make sure each country gets stored only once
-    check=$(country_exists $x)
+# Fill country array
+add_countries() {
+    local i=0
+    # Read from inputFile
+    while read -r line
+    do
+        # Country resides on the 4th column of each line
+        local x=$(echo $line | awk '{print $4}')
+        # Make sure each country gets stored only once
+        check=$(country_exists $x)
+        if [[ $check -ne 1 ]]
+        then
+            countries[i]=$x
+        fi
+        ((i++))
+    done < $inputFile
+}
 
-    if [[ $check -ne 1 ]]
-    then
-        countries[i]=$x
-    fi
-    ((i++))
-done < $inputFile
+# Create directories and files
+create_dirs() {
+    # Create initial dir
+    mkdir ./$input_dir
+    
+    # Move into initial dir
+    cd $input_dir
+    
+    for country in "${countries[@]}"
+    do
+        # Create one dir per country
+        mkdir $country
+        # Move into country's dir
+        cd $country
+        # Create numFilesPerDirectory files for each country dir
+        for (( i=0; i<numFilesPerDirectory; i++ ))
+        do
+            touch $country-$i
+        done
+        # Move back into initial dir
+        cd ../
+    done
+}
 
-
-for each in "${countries[@]}"
-do
-    echo $each
-done
-
-
-
-
-
-
-# # Toss a YES/NO coin
-    # toss_coin() {
-    #     local x=$(( $RANDOM%2 )) # x can be either 0 or 1
-    #     if [ "$x" -eq 0 ]
-    #     then
-    #         echo "NO"
-    #     else
-    #         echo "YES"
-    #     fi
-    # }
-
-    # # Produce unique random numbers within given limits
-    # random_id() {
-    #     num_array=( $( shuf -i 0-9999 -n "$numLines") )
-    #     # If duplicates are allowed, up to 2% of IDs will be duplicates
-    #     if [ $1 -eq 1 ]
-    #     then
-    #         local p=`bc <<< "$numLines*0.03/1"` # Floor to nearest integer
-    #         while [ $p -gt 0 ]
-    #         do
-    #             # get random indices in num_array
-    #             local k=$(( $RANDOM%$numLines ))
-    #             local j=$(( $RANDOM%$numLines ))
-    #             # make the one duplicate of the other
-    #             num_array[$j]=${num_array[$k]}
-
-    #             p=$(( p - 1 ))
-    #         done
-    #     fi
-    # }
-
-    # # Produce random date
-    # random_date() {
-    #     # let d=$date+%d
-    #     local dd=$(( RANDOM%1+2020 ))
-    #     local mm=$(( RANDOM%12+1 ))
-    #     local yyyy=$(( RANDOM%28+1 ))
-    #     d=`date -d "$dd-$mm-$yyyy" '+%d-%m-%Y'`
-    #     echo "$d"
-    # }
-
-    # random_id $duplicatesAllowed
-    # i=0
-    # while [ $i -lt $numLines ]
-    # do
-    #     # Create random citizenID
-    #     citizenID=${num_array[$i]}
-    #     echo $citizenID | tr '\n' ' ' >> "citizenRecordsFile.txt"
-
-    #     # Create random name
-    #     name_length=$(( $RANDOM%13+3 ))
-    #     # tr -dc: remove all chars from incoming command BUT the ones in the set
-    #     # head -c : keep first <name_length> bytes (chars) from /urandom
-    #     tr -dc 'a-zA-Z' </dev/urandom | head -z -c $name_length >> "citizenRecordsFile.txt"
-    #     echo -n ' ' >> "citizenRecordsFile.txt"
-
-    #     # Create random surname
-    #     name_length=$(( $RANDOM%13+3 ))
-    #     tr -dc 'a-zA-Z' </dev/urandom | head -z -c $name_length >> "citizenRecordsFile.txt"
-    #     echo -n ' ' >> "citizenRecordsFile.txt"
-
-    #     # Select random country
-    #     shuf -n 1 $countriesFile | tr '\n' ' ' >> "citizenRecordsFile.txt" 
-
-    #     # Create random age
-    #     age=$(( $RANDOM%120+1 ))
-    #     printf "%d " "$age" >> "citizenRecordsFile.txt"
-
-    #     # Select random virus
-    #     shuf -n 1 $virusesFile | tr '\n' ' '>> "citizenRecordsFile.txt"
-
-    #     # Randomly choose YES/NO
-    #     vaccined=$(toss_coin)
-    #     printf "%s" "$vaccined" >> "citizenRecordsFile.txt"
-
-    #     # Create random date, if YES was generated
-    #     if [[ $vaccined == "YES" ]]
-    #     then
-    #         date=$(random_date)
-    #         printf " %s\n" "$date" >> "citizenRecordsFile.txt"
-    #     else
-    #         printf "\n" >> "citizenRecordsFile.txt"
-    #     fi
-
-    #     i=$(( $i + 1 ))
-    # done
-
-    # # Remove last blank line
-# truncate -s -1 citizenRecordsFile.txt
+# Main
+add_countries
+create_dirs
+# TO-DO: round robin katanomi twn records se kathe arxeio, diavazontas apo ton input FILe
