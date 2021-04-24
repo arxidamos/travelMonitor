@@ -36,17 +36,17 @@ then
     exit 2
 fi
 
-# Store args
+# Store arguments
 inputFile=$1
 input_dir=$2
 numFilesPerDirectory=$3
-# Store all countries in an array
-countries=()
+# Associative array to store countries and find which country's file (0, 1, ...) to write next
+declare -A countries
 
 # Check if country already stored in array
 country_exists() {
     local found=0
-    for each in "${countries[@]}"
+    for each in "${!countries[@]}"
     do
         if [[ $1 == $each ]]
         then
@@ -57,49 +57,92 @@ country_exists() {
     echo $found
 }
 
-# Fill country array
-add_countries() {
-    local i=0
-    # Read from inputFile
-    while read -r line
-    do
-        # Country resides on the 4th column of each line
-        local x=$(echo $line | awk '{print $4}')
-        # Make sure each country gets stored only once
-        check=$(country_exists $x)
-        if [[ $check -ne 1 ]]
-        then
-            countries[i]=$x
-        fi
-        ((i++))
-    done < $inputFile
-}
+# Create initial dir
+mkdir ./$input_dir
 
-# Create directories and files
-create_dirs() {
-    # Create initial dir
-    mkdir ./$input_dir
-    
-    # Move into initial dir
-    cd $input_dir
-    
-    for country in "${countries[@]}"
-    do
-        # Create one dir per country
+while read -r line
+do
+    # Get country from 4th column of each line
+    country=$(echo $line | awk '{print $4}')
+    # Make sure each country gets stored only once
+    check=$(country_exists $country)
+    if [[ $check -ne 1 ]]
+    then
+        # Initialize values of each country with '0' (as in: "country-0")
+        countries[$country]=0
+
+        # Move into initial dir
+        cd $input_dir
+
+        # Create dir for new country
         mkdir $country
+        
         # Move into country's dir
         cd $country
-        # Create numFilesPerDirectory files for each country dir
-        for (( i=0; i<numFilesPerDirectory; i++ ))
-        do
-            touch $country-$i
-        done
-        # Move back into initial dir
-        cd ../
-    done
-}
 
-# Main
-add_countries
-create_dirs
-# TO-DO: round robin katanomi twn records se kathe arxeio, diavazontas apo ton input FILe
+        # Create numFilesPerDirectory files for country's dir
+        for (( j=0; j<numFilesPerDirectory; j++ ))
+        do
+            touch $country-$j
+        done
+
+        # Move back to initial dir
+        cd ../../
+    fi
+
+    # Move into initial dir
+    cd $input_dir
+
+    # Move into country's dir
+    cd $country     
+
+    #  Iterate through stored countries and their file numbers
+    for item in "${!countries[@]}"
+    do
+        #  Match current record's country
+        if [[ $country == $item ]]
+        then
+            # Return next number to be used for file writing
+            n=${countries[$item]}
+
+            if [[ ${countries[$item]} -lt numFilesPerDirectory ]]
+            then
+                # Increment file number
+                (( countries[$item]++ ))
+            else
+                # If limit surpassed, reset to 0
+                countries[$item]=0
+            fi
+            break
+        fi
+    done
+
+    # Write record to correct file
+    echo $line >> $country-$n
+
+    # Move back into initial dir
+    cd ../../
+done < $inputFile
+
+
+#  TESTING
+# for each in "${!next[@]}"
+# do
+#     echo "key   : " $each
+#     echo "number: " ${next[$each]}
+# done
+
+# for each in "${!next[@]}"
+# do
+#     ((next[$each]++))
+# done
+
+# for each in "${!next[@]}"
+# do
+#     echo "key   : " $each
+#     echo "number: " ${next[$each]}
+# done
+
+
+
+
