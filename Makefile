@@ -5,6 +5,7 @@ SOURCE = main.c mainFunctions.c stateList.c recordList.c bloomFilter.c skipList.
 HEADER = structs.h functions.h
 OUT = travelMonitor
 TEMP_OUT = child
+TEMP_DIRS = ./test_dir ./input_dir
 CC = gcc
 FLAGS = -g3 -c -Wall
 
@@ -40,5 +41,6 @@ bloomFilter.o:bloomFilter.c
 skipList.o:skipList.c
 	$(CC) $(FLAGS) skipList.c		
 
-clean:@echo "Cleaning up..."
-	rm -vf $(OBJS) $(OUT) 
+clean:
+	rm -f $(OBJS) $(OUT) $(TEMP_OBJS) $(TEMP_OUT)
+	rm -rf $(TEMP_DIRS)
