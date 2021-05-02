@@ -55,4 +55,7 @@ int compareDate (Date a, Date b);
 int isBetweenDates (Date a, Date x, Date b);
 Date getTime ();
 
+//
+char* readBytes(char* msg, int length, int fd, char *buf, int bufSize);
+
 #endif

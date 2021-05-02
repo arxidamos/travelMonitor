@@ -3,6 +3,7 @@
 #include <dirent.h>
 #include <string.h>
 #include <time.h>
+#include <signal.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -15,7 +16,7 @@ int main(int argc, char **argv) {
     int numMonitors;
     int bufferSize;
     int bloomSize;
-    char* dir_path;    
+    char* dir_path;
     DIR* input_dir;
 
 	// Scan command line arguments
@@ -59,12 +60,11 @@ int main(int argc, char **argv) {
     // TO-DO block signals during command process, block signals during setup?
     // TO-DO Structures for Monitors?
 
-
     // Create a diretory for the named pipes
-    char* fifo_dir_path = "./named_pipes";
+    char* fifoPath = "./named_pipes";
     // if (access(dir_path, F_OK) == 0)  // If dir already exists (due to abnormal previous termination, eg: SIGKILL)
     // delete_flat_dir(dir_path);      // remove it
-    if (mkdir(fifo_dir_path, 0777) == -1) {
+    if (mkdir(fifoPath, 0777) == -1) {
         perror("Error creating named_pipes directory");
         exit(1);
     }
@@ -72,199 +72,164 @@ int main(int argc, char **argv) {
     // Store the child processes' pids
     pid_t childpids[numMonitors];
     // Parent process' fds for read and write
-    int parentRead_fd[numMonitors];
-    int parentWrite_fd[numMonitors];
+    int readfd[numMonitors];
+    int writefd[numMonitors];
+    char pipeParentReads[25];
+    char pipeParentWrites[25];
 
+    // Create named pipes and child processes
     for (int i=0; i<numMonitors; i++) {
-        printf("Iteration %d\n", i);
 
         // Parent process' read and write ends
-        char parentRead[32];
-        char parentWrite[32];
 
         // Name them
-        sprintf(parentRead, "./named_pipes/Read%d", i);
-        sprintf(parentWrite, "./named_pipes/Write%d", i);
+        sprintf(pipeParentReads, "./named_pipes/readPipe%d", i);
+        sprintf(pipeParentWrites, "./named_pipes/writePipe%d", i);
         
-        printf("Creating fifos %d\n", i);
+        printf ("Making named pipes %s and %s\n", pipeParentReads, pipeParentWrites);
 
         // Create named pipes for read and write
-        if (mkfifo(parentRead, 0666) == -1) {
+        if (mkfifo(pipeParentReads, 0666) == -1) {
             perror("Error creating named pipe");
             exit(1);
         }
-        if (mkfifo(parentWrite, 0666) == -1) {
+        if (mkfifo(pipeParentWrites, 0666) == -1) {
             perror("Error creating named pipe");
             exit(1);
         }
 
         // Open reading fifo for each child process
-        if ((parentRead_fd[i] = open(parentRead, O_RDONLY | O_NONBLOCK)) == -1) {
+        if ((readfd[i] = open(pipeParentReads, O_RDWR)) == -1) {
             perror("Error opening named pipe for reading");
             exit(1);
         }
-        // Open writing fifo for each child process
-        if ((parentWrite_fd[i] = open(parentWrite, O_RDWR | O_NONBLOCK)) == -1) {
+        if ((writefd[i] = open(pipeParentWrites, O_RDWR | O_NONBLOCK)) == -1) {
             perror("Error opening named pipe for writing");
             exit(1);
-        }        
+        }
 
+        printf ("Forking...\n------------------\n");
         // Create child processes
-        if ( (childpids[i] = fork()) == -1) {
+        if ((childpids[i] = fork()) == -1) {
             perror("Error with fork");
             exit(1);
         }
-        else if (childpids[i] == 0) {
-            printf ("I am the child process with ID: %lu \n", ( long ) getpid ());
-            execl("child", "lol", NULL);
+        if (childpids[i] == 0) {
+            printf ("I am the child process with ID: %lu and parent ID: %lu.\n", (long)getpid(), (long)getppid());
+            // Convert bufSize to string to pass it as arg
+            char bufSizeString[15];
+            // char* bufSizeString = malloc (sizeof(char)* )
+            sprintf(bufSizeString, "%d", bufferSize);
+            char arithmos[4];
+            sprintf(arithmos, "%d", i);
+            execl("./child", "child", bufSizeString, pipeParentReads, arithmos, NULL);
+            // execl("./child", "child", bufSizeString, pipeParentReads, NULL);
+
             perror("Error with execl");
-            // exit(0);
         }
-        else {
-            printf ("I am the parent process with ID: %lu \n", ( long ) getppid ());
-        }
+        printf ("I am the parent process with ID: %lu and child ID: %lu.\n", (long)getpid(), (long)childpids[i]);
     }
 
-    int status = 0;
+    
+    // Signal handler for when a child process exits
     pid_t pid;
-    int size = numMonitors;
-    // for (int i=0; i<size; i++) {
-        //     // pid = wait(&status);
-        //     printf("Child with PID %ld exited with status 0x%x.\n", (long)pid, status);
-        //     if (i != size-1) {
-        //         childpids[i] = childpids[i+1];
-        //     }   
-        //     size--;
-
-    // }
-
-    // SIGNAL HANDLER FOR WHEN CHILD PROCESS EXITS
     // -1: wait for any child process to end, NULL: ignore child's return status, WNOHANG: avoid suspending the caller
-    while ( (pid = waitpid(-1, NULL, WNOHANG)) > 0) {
+    // while ( (pid = waitpid(-1, NULL, WNOHANG)) > 0) {
+    //     printf("...reaching the father %lu process \n",(long)pid);
+    //     // int index;
+    //         // for (int i=0; i<size; i++) {
+    //         //     if (childpids[i] == pid) {
+    //         //         index = i;
+    //         //         break;
+    //         //     }
+    //         // }
+
+    //         // if ( (childpids[index] = fork()) == -1) {
+    //         //     perror("ton poulo");
+    //         //     exit(1);
+    //         // }
+    //         // else if (childpids[index] == 0) {
+    //         //     printf ("I am the child process with ID: %lu \n", ( long ) getpid ());
+    //         //     exit(0);
+    //     // }
+    // }
+    while ((pid = waitpid(-1, NULL, 0)) > 0) {
+
+            printf("...reaching the father %lu process \n",(long)pid);
+    }
+
+
+    fd_set readFds;
+    while (1) {
+        // Zero the fd_set
+        FD_ZERO(&readFds);
+        for (int i=0; i<numMonitors; i++) {
+            FD_SET(readfd[i], &readFds);
+        }
+
+        // int maxfd;
+        // for (int i=0; i<numMonitors-1; i++) {
+        //     maxfd = parentRead_fd[i] > parentRead_fd[i+1] ?  parentRead_fd[i] : parentRead_fd[i+1];
+        // }
         
-        int index;
-        for (int i=0; i<size; i++) {
-            if (childpids[i] == pid) {
-                index = i;
-                break;
+        int retVal = select(FD_SETSIZE, &readFds, NULL, NULL, NULL);
+        if (retVal == -1) {
+            perror("Error with select");
+        }
+        if (retVal == 0) {
+            // No child process' state has changed
+            continue;
+        }
+        for (int i=0; i<numMonitors; i++) {
+            // True if available data in this fd
+            if (FD_ISSET(readfd[i], &readFds)) {
+                printf("Processing message\n");
+                // Read the message
+                char inbuf[bufferSize];
+                memset(inbuf, 0, bufferSize);
+                // Fist get the header, containing the length of the actual message
+                char* header = calloc((MAX_DIGITS + 1), sizeof(char));
+                header = readBytes(header, MAX_DIGITS, readfd[i], inbuf, bufferSize);
+                header[strlen(header)] = '\0';
+                printf("Length as a string is:%s\n", header);
+                int length = atoi(header+1);
+                printf("Length as an int is:%d\n", length);
+                // Then get the actual message
+                char* message = calloc( (length+1), sizeof(char));
+                message = readBytes(message, length, readfd[i], inbuf, bufferSize);
+                message[length] = '\0';
+
+                printf("Message received: %s\n", message);
+                free(header);
+                free(message);
+            }
+        }
+        free(dir_path);
+        closedir(input_dir);
+        for (int i=0; i<numMonitors; i++) {
+            if (close(readfd[i]) == -1) {
+                perror("Error closing named pipes");
             }
         }
 
-        if ( (childpids[index] = fork()) == -1) {
-            perror("ton poulo");
-            exit(1);
+        for (int i=0; i<numMonitors; i++) {
+            remove(pipeParentReads);
+            remove(pipeParentWrites);
         }
-        else if (childpids[index] == 0) {
-            printf ("I am the child process with ID: %lu \n", ( long ) getpid ());
-            exit(0);
-        }
+        fflush(stdout);
 
+
+        exit(0);
     }
 
-    for (int i=0; i<numMonitors; i++) {
-        printf ("Childpid[%d]=%d\n", i, childpids[i]);
-    }
-    // char buffSize[20];
-    // sprintf(buffSize, "%d", bufferSize);
 
-    // for (int i=0; i<numMonitors; i++) {
+    // // Unblock signals INT, QUIT, CHLD, USR2    
+    // sigprocmask(SIG_UNBLOCK, &cmd_set, NULL);
 
-    //     printf("%d iteration\n", i);
-
-    //     // Read and write ends of parent
-    //     char parentRead[32];
-    //     char parentWrite[32];
-
-    //     sprintf(parentRead, "./named_pipes/Read%d", i);
-    //     sprintf(parentWrite, "./named_pipes/Write%d", i);
-    //     printf("Creating fifos %d\n", i);
-
-    //     // Create the named pipes
-    //     if (mkfifo(parentRead, 0666) == -1) {
-    //         perror("Error creating named pipe");
-    //         exit(1);
-    //     }
-    //     if (mkfifo(parentWrite, 0666) == -1) {
-    //         perror("Error creating named pipe");
-    //         exit(1);
-    //     }
-
-    //     // Open reading fifo for each child process
-    //     if ((parentRead_fd[i] = open(parentRead, O_RDONLY | O_NONBLOCK)) == -1) {
-    //         perror("Error opening named pipe for reading");
-    //         exit(1);
-    //     }
-    //     // Open writing fifo for each child process
-    //     if ((parentWrite_fd[i] = open(parentWrite, O_RDWR | O_NONBLOCK)) == -1) {
-    //         perror("Error opening named pipe for writing");
-    //         exit(1);
-    //     }
-
-    //     printf("Opening fifos %d\n", i);
-
-    //     if (childPids[i] = fork() == -1) {
-    //         perror("Error with fork");
-    //         exit(1);
-    //     }
-    //     if (childPids[i] == 0) {
-    //         //  kalei execl me executable to Monitor kai orismata ta path twn pipes
-    //         // execl("./diseaseAggregator_worker", "diseaseAggregator_worker", buf_size_str, read_p, writ_p, input_dir, NULL);
-    //         // perror("execl");
-    //         printf("Child process %d with ID %lu\n", i, (long)getpid());
-    //         sleep(1);
-    //         exit(1);
-    //     }
-
-        // else {
-        //     printf("Parent process %d with ID %lu\n", i, (long)getpid());
-        //     exit(1);
-        //     // parent        process
-        //     for (;;) {
-        //         fd_set readFds;
-
-        //         FD_ZERO(&readFds);  // Clear FD set for select
-        //         for (int i=0; i<numMonitors; i++) {
-        //             FD_SET(parentRead_fd[i], &readFds);
-        //         }
-
-        //         // int maxfd;
-        //         // for (int i=0; i<numMonitors-1; i++) {
-        //         //     maxfd = parentRead_fd[i] > parentRead_fd[i+1] ?  parentRead_fd[i] : parentRead_fd[i+1];
-        //         // }
-                
-        //         int ret = select(FD_SETSIZE, &readFds, NULL, NULL, NULL);
-        //         if (ret == -1) {
-        //             perror("Error with select");
-        //         }
-        //         else if (ret) {
-        //             for (int i=0; i<numMonitors; i++) {
-        //                 // True if available data in this fd
-        //                 if (FD_ISSET(parentRead_fd[i], &readFds)) {
-        //                     char* message = 
-        //                 }
-
-        //             }
-        //         }
-
-
-        //     }
-
-        // }
-
+    // if (WIFEXITED(status)) {
+    //         exit_status = WEXITSTATUS(status);
+    //         printf("Exit status from %lu was %d\n", (long) childPid, exit_status);
     // }
-
-
-
-    // το travelMonitor app φτιάχνει Χ named pipes για επικοινωνία με child processes
-    // το travelMonitor app κάνει fork X child processes.
-    // το child process καλεί exec με εκτελέσιμο το Monitor και ορίσματα του Monitor τα path των pipes
-    // με αυτά τα pipes μιλάει το travelMonitor με κάθε Monitor
-    // το travelMonitor ενημερώνει κάθε Monitor μέσω του pipe για το ποια subdirs θα πάρει
-    // το travelMonitor μοιράζει round-robin τα subdirs
-    // τα Monitor στέλνoυν bloom filter στο travelMonitor
-    // το travelMonitor λαμβάνει αυτά και αναμένει εντολές
-    // τα Monitor διαβάζουν από τα ανατεθέντα αρχεία, γεμίζουν δομές
-
 
     // Initialize variables
 
@@ -1166,12 +1131,6 @@ int main(int argc, char **argv) {
         //         printf("Please type a known command:\n");
         //     }
     // }
-
-    free(dir_path);
-    closedir(input_dir);
-
-
-    fflush(stdout);
 
     return 0;
 }

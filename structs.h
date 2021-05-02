@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #define MAX 32
+#define MAX_DIGITS 10
 
 typedef struct Date {
     int day;    //dd
