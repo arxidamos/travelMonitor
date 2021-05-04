@@ -3,8 +3,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <dirent.h>
 #define MAX 32
-#define MAX_DIGITS 10
+#define DIGITS 10
 
 typedef struct Date {
     int day;    //dd
@@ -51,5 +52,17 @@ typedef struct SkipList {
     char* virus;
     struct SkipList* next;
 } SkipList;
+
+typedef struct Message {
+    char* code;
+    int length;
+    char* body;
+} Message;
+
+typedef struct ChildMonitor {
+    pid_t pid;
+    char** country;
+    int countryCount;
+} ChildMonitor;
 
 #endif

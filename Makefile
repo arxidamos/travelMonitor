@@ -1,6 +1,6 @@
 OBJS = main.o mainFunctions.o stateList.o recordList.o bloomFilter.o skipList.o communication.o
-TEMP_OBJS = tisPoutsasMain.o
-TEMP_SOURCE = tisPoutsasMain.c
+TEMP_OBJS = tisPoutsasMain.o communication.o
+TEMP_SOURCE = tisPoutsasMain.c communication.c
 SOURCE = main.c mainFunctions.c stateList.c recordList.c bloomFilter.c skipList.c communication.c
 HEADER = structs.h functions.h
 OUT = travelMonitor

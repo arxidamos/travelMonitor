@@ -9,84 +9,74 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
-# define MAX_DIGITS 10
-
+#include "structs.h"
+#include "functions.h"
 
 int main(int argc, char* argv[]) {
 
-    printf("I m in the child\n");
-    // Writing fd for childs (Reading for parent)
+    // for (int i=0; i<argc; i++) {
+    //     printf("%s ", argv[i]);
+    // }
+    // printf("\n");
 
-    // Get the pipe from args
-    // char* pipeWrite = malloc(strlen(argv[1]) + 1);
-    // strcpy(pipeWrite, argv[1]);
-    
-    for (int i=0; i<argc; i++) {
-        printf("%s\t", argv[i]);
-    }
-    printf("\n");
     int bufSize = atoi(argv[1]);
     // Child's writing pipe is parent's reading pipe
     char* pipeWrite = argv[2];
-
-     char* arithmos = argv[3];
+    // Child's reading pipe is parent's writing pipe
+    char* pipeRead = argv[3];
+    printf("To GAMW WRITING PIPE TOU GAMW PARENT einai gia to paidi TO READING PIPE: %s\n", pipeRead);
+    char* arithmos = argv[4];
     int x = atoi(arithmos);
     char msg[33];
     sprintf(msg, "gamw tin malakia sou tin orthia%d", x);
-    int msglen = 32;
-    // char* msg = "gamw tin malakia sou tin orthia bastardo";
-    // int msglen = strlen(msg);
     
 
-    
-    char buf[bufSize];
-    memset(buf, 0, bufSize);
-
-    // for (int i=0; i<strlen(pipeWrite); i++) {
-
-    // Open the pipe
-    int out_fd;
-    if ( (out_fd = open(pipeWrite, O_RDWR | O_NONBLOCK)) == -1 ) {
-        perror("Problem opening pipe");
+    // Open writing pipe
+    int outfd;
+    if ( (outfd = open(pipeWrite, O_WRONLY)) == -1 ) {
+        perror("Problem opening writing pipe");
+        exit(1);
     }
-
-
-    // header (length of message and leading zeros) + actual message + \0
-    char* fullMessage = malloc( sizeof(char)*(MAX_DIGITS + msglen + 1) );
-    snprintf(fullMessage, MAX_DIGITS+1, "%0*d", MAX_DIGITS, msglen);
-    snprintf(fullMessage+MAX_DIGITS, msglen+1, "%s", msg);
-    fullMessage[MAX_DIGITS+msglen+1] = '\0';
-    printf("Sending the full Message: %s\n", fullMessage);
+    // Open reading pipe
+    int incfd;
+    if ( (incfd = open(pipeRead, O_RDONLY)) == -1 ) {
+        perror("Problem opening reading pipe");
+        exit(1);
+    }    
 
     // Send the message
-    int sentTotal = 0;
-    while ( sentTotal < strlen(fullMessage)) {
+    
+    // sendBytes('P', msg, outfd, bufSize);
 
-        // If bytes left to send can fit in pipe, send them all. Else send only bufSize bytes (which fit)
-        int left = strlen(fullMessage) - sentTotal;
-        int bytesToWrite = left < bufSize ? left : bufSize;
 
-        strncpy(buf, fullMessage + sentTotal, bytesToWrite);
-        int sent;
-        printf("Sending: ");
-        for (int k=0; k<bytesToWrite; k++) {
-            printf("%c", buf[k]);
-        }
-        printf("\n");
+
+    while (1) {
+        // Read the message
+        printf("IN THE CHILD LOOP (from child %d)\n", getpid());
+        Message* incMessage = malloc(sizeof(Message));
         
-        if ( (sent = write(out_fd, buf, bytesToWrite)) == -1) {
-            perror("Error with writing message");
-            exit(1);
+        getMessage(incMessage, incfd, bufSize);
+
+        printf("Message IN CHILD received: %s\n", incMessage->body);
+        printf("Code IN CHILD received: %c\n", incMessage->code[0]);
+
+        if (incMessage->code[0] == 'C') {
+            printf("gamieste oi pantes, bgainw\n");
+            sendBytes('R', msg, outfd, bufSize);
+            free(incMessage->code);
+            free(incMessage->body);
+            free(incMessage);        
+            exit(0);
         }
-        sentTotal += sent;
-    }
- 
-    free(fullMessage);
-    printf("Child terminating\n");
-    if (close(out_fd) == -1) {
-        perror("Error closing named pipe");
+
+        free(incMessage->code);
+        free(incMessage->body);
+        free(incMessage);
     }
 
-    exit(0);
-
+    // printf("Child terminating\n");
+    // if (close(outfd) == -1) {
+    //     perror("Error closing named pipe");
+    // }
+    // exit(0);
 }

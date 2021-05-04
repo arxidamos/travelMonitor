@@ -56,6 +56,9 @@ int isBetweenDates (Date a, Date x, Date b);
 Date getTime ();
 
 //
-char* readBytes(char* msg, int length, int fd, char *buf, int bufSize);
-
+void sigchldHandler();
+void getMessage (Message* incMessage, int incfd, int bufSize);
+char* readBytes(char* msg, int length, int fd, int bufSize);
+void sendBytes (char code, char* body, int fd, int bufSize);
+void mapCountryDirs (DIR* input_dir, int numMonitors, int outfd[], ChildMonitor childMonitor[], int bufSize);
 #endif
