@@ -57,8 +57,15 @@ Date getTime ();
 
 //
 void sigchldHandler();
+void analyseChildMessage(Message* message, int *readyMonitors);
+void analyseMessage (MonitorDir** monitorDir, Message* message, int outfd, int bufSize, char* dir_path);
 void getMessage (Message* incMessage, int incfd, int bufSize);
 char* readBytes(char* msg, int length, int fd, int bufSize);
 void sendBytes (char code, char* body, int fd, int bufSize);
-void mapCountryDirs (DIR* input_dir, int numMonitors, int outfd[], ChildMonitor childMonitor[], int bufSize);
+void mapCountryDirs (char* dir_path, int numMonitors, int outfd[], ChildMonitor childMonitor[], int bufSize);
+int compare (const void * a, const void * b);
+
+MonitorDir* insertDir (MonitorDir** head, DIR* dir, char* country, char* files[], int fileCount);
+void printMonitorDirList (MonitorDir* monitorDir);
+void freeMonitorDirList (MonitorDir* head);
 #endif

@@ -55,6 +55,7 @@ void printStateList (State* state) {
         printf("State: %s\n", state->name);
         state = state->next;
     }
+    printf("Finished printing states\n");
 }
 
 // Free memory allocated for linked list 

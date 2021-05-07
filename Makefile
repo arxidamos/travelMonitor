@@ -1,7 +1,7 @@
-OBJS = main.o mainFunctions.o stateList.o recordList.o bloomFilter.o skipList.o communication.o
-TEMP_OBJS = tisPoutsasMain.o communication.o
-TEMP_SOURCE = tisPoutsasMain.c communication.c
-SOURCE = main.c mainFunctions.c stateList.c recordList.c bloomFilter.c skipList.c communication.c
+OBJS = main.o mainFunctions.o stateList.o recordList.o bloomFilter.o skipList.o communication.o monitorDirList.o
+TEMP_OBJS = tisPoutsasMain.o mainFunctions.o stateList.o recordList.o bloomFilter.o skipList.o communication.o monitorDirList.o
+TEMP_SOURCE = tisPoutsasMain.c mainFunctions.c stateList.c recordList.c bloomFilter.c skipList.c communication.c monitorDirList.c
+SOURCE = main.c mainFunctions.c stateList.c recordList.c bloomFilter.c skipList.c communication.c monitorDirList.c
 HEADER = structs.h functions.h
 OUT = travelMonitor
 TEMP_OUT = child

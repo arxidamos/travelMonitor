@@ -7,9 +7,12 @@
 #include "functions.h"
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <limits.h>
+#include "functions.h"
+#include "structs.h"
 
 void getMessage (Message* incMessage, int incfd, int bufSize) {
-    printf("getMessage function!\n");
+    // printf("getMessage function!\n");
     // First get the code
     incMessage->code = calloc(1, sizeof(char));
     incMessage->code = readBytes(incMessage->code, 1, incfd, bufSize);
@@ -24,7 +27,7 @@ void getMessage (Message* incMessage, int incfd, int bufSize) {
     incMessage->body = calloc( (incMessage->length+1), sizeof(char));
     incMessage->body = readBytes(incMessage->body, incMessage->length, incfd, bufSize);
     incMessage->body[incMessage->length] = '\0';
-    printf("wtf bitch %s\n", incMessage->body);
+    // printf("wtf bitch %s\n", incMessage->body);
     // printf("Message received: %s\n", incMessage.body);
     // printf("Code received: %c\n", incMessage.code[0]);
     free(header);
@@ -50,11 +53,11 @@ char* readBytes(char* msg, int length, int fd, int bufSize) {
             exit(1);
         }
  
-        printf("Reading...");
-        for (int k=0; k<received; k++) {
-            printf("%c", buf[k]);
-        }
-        printf("\n");
+        // printf("Reading...");
+        // for (int k=0; k<received; k++) {
+        //     printf("%c", buf[k]);
+        // }
+        // printf("\n");
         strncpy(msg + receivedTotal, buf, received);
         receivedTotal += received;
     }
@@ -85,11 +88,11 @@ void sendBytes (char code, char* body, int fd, int bufSize) {
 
         strncpy(buf, msg + sentTotal, bytesToWrite);
         int sent;
-        printf("Sending: ");
-        for (int k=0; k<bytesToWrite; k++) {
-            printf("%c", buf[k]);
-        }
-        printf("\n");
+        // printf("Sending: ");
+        // for (int k=0; k<bytesToWrite; k++) {
+        //     printf("%c", buf[k]);
+        // }
+        // printf("\n");
         
         if ( (sent = write(fd, buf, bytesToWrite)) == -1) {
             perror("Error with writing message");
@@ -101,30 +104,49 @@ void sendBytes (char code, char* body, int fd, int bufSize) {
     return;
 }
 
-
-void mapCountryDirs (DIR* input_dir, int numMonitors, int outfd[], ChildMonitor childMonitor[], int bufSize) {
+void mapCountryDirs (char* dir_path, int numMonitors, int outfd[], ChildMonitor childMonitor[], int bufSize) {
     int i=0;
-    struct dirent* current;
 
-    while ((current = readdir(input_dir))) {
-        char* dirName = current->d_name;
+    struct dirent** directory;
+    int fileCount;
+
+    fileCount = scandir(dir_path, &directory, NULL, alphasort);
+    
+    for (int j=0; j<fileCount; j++) {
+       char* dirName = directory[j]->d_name;
         // Avoid assigning dirs . and ..
         if (strcmp(dirName, ".") && strcmp(dirName, "..")) {
+            
             // Send country assignment command
             sendBytes('C', dirName, outfd[i], bufSize);
-            childMonitor[i].countryCount++;
-            childMonitor[i].country = malloc(sizeof(char*)*(childMonitor[i].countryCount));
-            childMonitor[i].country[0] = malloc(strlen(dirName)+1);
-            strcpy(childMonitor[i].country[0], dirName);
+            // Store each country in its childMonitor structure
+            if (childMonitor[i].countryCount == 0) {
+                childMonitor[i].countryCount++;
+                childMonitor[i].country = malloc(sizeof(char*)*(childMonitor[i].countryCount));
+                childMonitor[i].country[0] = malloc(strlen(dirName)+1);
+                strcpy(childMonitor[i].country[0], dirName);
+            }
+            else {
+                childMonitor[i].countryCount++;
+                childMonitor[i].country = realloc(childMonitor[i].country, sizeof(char*)*(childMonitor[i].countryCount));
+                childMonitor[i].country[childMonitor[i].countryCount-1] = malloc(strlen(dirName)+1);
+                strcpy(childMonitor[i].country[childMonitor[i].countryCount-1], dirName);
+            }
             i = (i+1) % numMonitors;
         }
-
     }
-    printf("FINISHED\n");
+    for (int i = 0; i < fileCount; i++) {
+        free(directory[i]);
+    }
+    free(directory);
+
+    for (int i=0; i<numMonitors; i++) {
+        sendBytes('F', "", outfd[i], bufSize);
+    }
+    printf("FINISHED MAPPING COUNTRIES\n");
 }
 
-
-void sigchldHandler() {
+void sigchldHandler () {
     int status;
     pid_t pid;
     while (1) {
@@ -139,4 +161,82 @@ void sigchldHandler() {
             printf("...reaching parent - %lu  with return code %d \n",(long)pid, status);
         }
     }
+}
+
+// Wrapper cmp function to use in qsort
+int compare (const void * a, const void * b) {
+  return strcmp(*(char* const*)a, *(char* const*)b );
+}
+
+void analyseMessage (MonitorDir** monitorDir, Message* message, int outfd, int bufSize, char* dir_path) {
+    // Message is for countries assignment
+    if (message->code[0] == 'C') {
+
+        // Open the directory
+        char full_path[_POSIX_PATH_MAX];
+        snprintf(full_path, _POSIX_PATH_MAX, "%s/%s", dir_path, message->body);
+        DIR* dir;
+        if (!(dir = opendir(full_path))) {
+            perror("Error with opening directory");
+            exit(1);
+        }
+
+        // Get number of directory's files 
+        int filesCount = 0;
+        struct dirent* current;
+        while ( (current = readdir(dir)) ) {
+            if ( strcmp(current->d_name, ".") && strcmp(current->d_name, "..") ) {
+                filesCount++;
+            }
+        }
+        // Reset directory's stream
+        rewinddir(dir);
+        char* malakia = malloc(strlen(dir_path)+1);
+        strcpy(malakia, dir_path);
+
+        char* gamwspiti = malloc(strlen(message->body)+1);
+        strcpy(gamwspiti, message->body);
+        
+
+        // Get the file names
+        char* files[filesCount];
+        int i = 0;
+        while ( (current = readdir(dir)) ) {
+            char* marika = malloc(strlen(current->d_name)+1);
+            strcpy(marika, current->d_name);
+
+            if ( strcmp(current->d_name, ".") && strcmp(current->d_name, "..") ) {
+                files[i] = malloc(strlen(message->body) + 1 + strlen(current->d_name) + 1);
+                strcpy(files[i], message->body);
+                strcat(files[i], "/");
+                strcat(files[i], current->d_name);
+    
+                i++;
+            }
+        }
+        qsort(files, filesCount, sizeof(char*), compare);
+        // Reset directory's stream
+        rewinddir(dir);
+
+        // Store all info in a structure
+        *monitorDir = insertDir(monitorDir, dir, message->body, files, filesCount);
+
+        // // Iterate through directory's files
+        // for (int i=0; i<filesCount; i++) {
+        //     // DO STUFF FOR BLOOM FILTERS
+        // }
+        return;
+    }
+    // Message is the parent's checking if mapping ready
+    else if (message->code[0] == 'F') {
+        sendBytes('F', "", outfd, bufSize);
+    }
+    return;
+}
+
+void analyseChildMessage(Message* message, int *readyMonitors) {
+    if (message->code[0] =='F') {
+        (*readyMonitors)++;
+    }
+
 }

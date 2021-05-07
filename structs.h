@@ -6,6 +6,10 @@
 #include <dirent.h>
 #define MAX 32
 #define DIGITS 10
+// 'R'  :   ready Monitor
+// 'C'  :   country mapping
+
+
 
 typedef struct Date {
     int day;    //dd
@@ -65,4 +69,11 @@ typedef struct ChildMonitor {
     int countryCount;
 } ChildMonitor;
 
+typedef struct MonitorDir {
+    DIR* dir;
+    char* country;
+    char** files;
+    int fileCount;
+    struct MonitorDir* next;
+} MonitorDir;
 #endif
