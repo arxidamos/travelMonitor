@@ -6,7 +6,7 @@
 #include <dirent.h>
 #define MAX 32
 #define DIGITS 10
-// 'R'  :   ready Monitor
+// 'F'  :   ready Monitor
 // 'C'  :   country mapping
 
 
@@ -76,4 +76,12 @@ typedef struct MonitorDir {
     int fileCount;
     struct MonitorDir* next;
 } MonitorDir;
+
+typedef struct Buffer {
+    void* data;
+    int next;
+    int size;
+} Buffer;
+
 #endif
+

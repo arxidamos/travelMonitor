@@ -22,7 +22,7 @@ MonitorDir* insertDir (MonitorDir** head, DIR* dir, char* country, char* files[]
 
     newNode->files = malloc(sizeof(char*)*newNode->fileCount);
     for (int i=0; i<fileCount; i++) {
-        newNode->files[i] = malloc(sizeof(files[i])+1);
+        newNode->files[i] = malloc(strlen(files[i])+1);
         strcpy(newNode->files[i], files[i]);
     }
 
@@ -46,6 +46,10 @@ MonitorDir* insertDir (MonitorDir** head, DIR* dir, char* country, char* files[]
 // Print this Monitor's directory list
 void printMonitorDirList (MonitorDir* monitorDir) {
     printf("MonitorDir directories:");
+    
+    if (monitorDir == NULL) {
+        printf("Huh? MONITORDIR is null?\n");
+    }
     while (monitorDir != NULL) {
         printf(" %s,", monitorDir->country);
         printf("With files:");
@@ -68,6 +72,7 @@ void freeMonitorDirList (MonitorDir* head) {
         for (int i=0; i<tmp->fileCount; i++) {
             free(tmp->files[i]);
         }
+        free(tmp->files);
         free(tmp->country);
         free(tmp);
     }

@@ -57,13 +57,19 @@ Date getTime ();
 
 //
 void sigchldHandler();
-void analyseChildMessage(Message* message, int *readyMonitors);
-void analyseMessage (MonitorDir** monitorDir, Message* message, int outfd, int bufSize, char* dir_path);
+void sigQuitHandler (int sigNum);
+void signalHandler(void);
+void checkSigQuit (State** stateHead, Record** recordsHead, BloomFilter** bloomsHead, SkipList** skipVaccHead, SkipList** skipNonVaccHead, MonitorDir* MonitorDir, char* dir_path);
+void analyseChildMessage(Message* message, int *readyMonitors, int outfd, int bufSize);
+void analyseMessage (MonitorDir** monitorDir, Message* message, int outfd, int bufSize, char* dir_path, BloomFilter* bloomsHead);
 void getMessage (Message* incMessage, int incfd, int bufSize);
 char* readBytes(char* msg, int length, int fd, int bufSize);
 void sendBytes (char code, char* body, int fd, int bufSize);
 void mapCountryDirs (char* dir_path, int numMonitors, int outfd[], ChildMonitor childMonitor[], int bufSize);
 int compare (const void * a, const void * b);
+int getUserCommand(char* input, size_t inputSize, char* command, int* readyMonitors, int numMonitors, BloomFilter* bloomsHead, ChildMonitor* childMonitor, char* dir_path, DIR* input_dir, int* outfd, int bufSize);
+
+
 
 MonitorDir* insertDir (MonitorDir** head, DIR* dir, char* country, char* files[], int fileCount);
 void printMonitorDirList (MonitorDir* monitorDir);

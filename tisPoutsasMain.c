@@ -14,21 +14,17 @@
 
 int main(int argc, char* argv[]) {
 
-    int bufSize = atoi(argv[1]);
+    // Scan command line arguments
     // Child's writing pipe is parent's reading pipe
-    char* pipeWrite = argv[2];
+    char* pipeWrite = argv[1];
     // Child's reading pipe is parent's writing pipe
-    char* pipeRead = argv[3];
-    // char* dir_path = argv[4];
-    char* dir_path = malloc(strlen(argv[4]) + 1);
-    strcpy(dir_path, argv[4]);
+    char* pipeRead = argv[2];
+    char* dir_path = malloc(strlen(argv[3]) + 1);
+    strcpy(dir_path, argv[3]);
 
-    int bloomSize = atoi(argv[5]);
-    // char* arithmos = argv[4];
-    // int x = atoi(arithmos);
-    // char msg[33];
-    // sprintf(msg, "gamw tin malakia sou tin orthia%d", x);
-    
+    // Initialize bufSize and bloomSize, before parent sends them through pipes
+    int bufSize = 10;
+    int bloomSize = 0;
 
     // Open writing pipe
     int outfd;
@@ -43,27 +39,44 @@ int main(int argc, char* argv[]) {
         exit(1);
     }    
 
+    signalHandler();
+
+    // Get first two messages for bufSize and bloomSize
+    Message* firstMessage = malloc(sizeof(Message));
+    getMessage(firstMessage, incfd, bufSize);
+    bufSize = atoi(firstMessage->body);
+    getMessage(firstMessage, incfd, bufSize);
+    bloomSize = atoi(firstMessage->body);
+    free(firstMessage->code);
+    free(firstMessage->body);
+    free(firstMessage);
+
+    // Structure to store Monitor's directory info
     MonitorDir* monitorDir = NULL;
+    // BloomFilter head
+    BloomFilter* bloomsHead = NULL;
+    State* stateHead = NULL;
+    State* state;
+    Record* recordsHead = NULL;
+    Record* record;
+    SkipList* skipVaccHead = NULL;
+    SkipList* skipNonVaccHead = NULL;
+
 
     while (1) {
         // Read the message
-        // printf("IN THE CHILD LOOP (from child %d)\n", getpid());
-        Message* incMessage = malloc(sizeof(Message));
-        
+        Message* incMessage = malloc(sizeof(Message));        
         getMessage(incMessage, incfd, bufSize);
-
-        printf("Message IN CHILD received: %s ", incMessage->body);
-        printf("Code IN CHILD received: %c\n", incMessage->code[0]);
-
-        analyseMessage(&monitorDir, incMessage, outfd, bufSize, dir_path);
+        // printf("Message IN CHILD received: %s ", incMessage->body);
+        // printf("Code IN CHILD received: %c\n", incMessage->code[0]);
+        // Decode the message
+        analyseMessage(&monitorDir, incMessage, outfd, bufSize, dir_path, bloomsHead);
         
+        // If 'F' received, country mapping just finished
         if (incMessage->code[0] == 'F') {
-
-            // as diavasw ola ta arxeia kai kanoume send ta bloom filters
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-            FILE* inputFile;
-
             // Initialize variables
+            FILE* inputFile;
             size_t textSize;
             char* text = NULL;
             char* token = NULL;
@@ -74,32 +87,27 @@ int main(int argc, char* argv[]) {
             int age;
             char* virus;
             Date vaccDate;
-            State* stateHead = NULL;
-            State* state;
-            Record* recordsHead = NULL;
-            Record* record;
-            BloomFilter* bloomsHead = NULL;
+            // BloomFilter* bloomsHead = NULL;
             int k =16;
             int recordAccepted = 1;
-            SkipList* skipVaccHead = NULL;
-            SkipList* skipNonVaccHead = NULL;
             // Seed the time generator
             srand(time(NULL));
-            printf("bika sto palaio\n");
-            // Read from inputFile and create structs
-            while (monitorDir) {
-                for (int i=0; i<monitorDir->fileCount; i++) {
-                    char* currentFile = malloc(strlen(dir_path) + strlen(monitorDir->files[i])+1);
+
+            // Iterate through Monitor's directories and files
+            MonitorDir* curDir = monitorDir;
+            // Read from each directory
+            while (curDir) {
+                for (int i=0; i<curDir->fileCount; i++) {
+                    char* currentFile = malloc(strlen(dir_path) + strlen(curDir->files[i])+1);
                     strcpy(currentFile, dir_path);
-                    strcat(currentFile, monitorDir->files[i]);
+                    strcat(currentFile, curDir->files[i]);
                     inputFile = fopen(currentFile, "r");
                     if(inputFile == NULL) {
                         fprintf(stderr, "Cannot open file: %s\n", currentFile);
                         return 1;
                     }
-
+                    // Read from each file and create structs
                     while (getline(&text, &textSize, inputFile) != -1) {
-
                         // Record to be inserted in structs, unless faulty
                         recordAccepted = 1;
                         // Get citizenID
@@ -224,8 +232,10 @@ int main(int argc, char* argv[]) {
                         free(country);
                         free(virus);
                     }
+                    fclose(inputFile);
+                    free(currentFile);
                 }
-                monitorDir = monitorDir->next;
+                curDir = curDir->next;
             }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
             printStateList(stateHead);
@@ -234,32 +244,48 @@ int main(int argc, char* argv[]) {
             // printSkipLists(skipVaccHead);
             // printf("---------------------\n");
             // printSkipLists(skipNonVaccHead);
-            
-            printMonitorDirList(monitorDir);
-            freeMonitorDirList(monitorDir);
+
+            // Initialization finished, send Blooms to parent
+            // initialize all the shit, borei na ta ferw edw
+            // send the bloom filters
+            BloomFilter* current = bloomsHead;
+            while (current) {
+                // printf("sending Bloom Filter\n");
+                sendBytes('v', current->virus, outfd, bufSize);
+                char bitArrayString[current->size];
+                sprintf(bitArrayString, "%d", current->size);
+                sendBytes('b', bitArrayString, outfd, bufSize);
+                current = current->next;
+            }
+            printf("o child %d eimai, esteila ta filter\n", (int)getpid());
+            sendBytes('F', "", outfd, bufSize);
             free(incMessage->code);
             free(incMessage->body);
             free(incMessage);
-            exit(0);
+
         }
-        // if (incMessage->code[0] == 'C') {           
-        //     printf("gamieste oi pantes, bgainw\n");
-            // sendBytes('R', msg, outfd, bufSize);
-        //     free(incMessage->code);
-        //     free(incMessage->body);
-        //     free(incMessage);        
+        
+        // Signal handler for SIGINT and SIGQUIT
+        checkSigQuit(&stateHead, &recordsHead, &bloomsHead, &skipVaccHead, &skipNonVaccHead, monitorDir, dir_path);
+
+        // // Wait for other commands
+        // if (incMessage->code[0] == 'f') {
+        //     // free(dir_path);
+        //     // free(incMessage->code);
+        //     // free(incMessage->body);
+        //     // free(incMessage);
+        //     // freeMonitorDirList(monitorDir);
+
+        //     freeStateList(stateHead);
+        //     freeRecordList(recordsHead);
+        //     freeBlooms(bloomsHead);
+        //     freeSkipLists(skipVaccHead);
+        //     freeSkipLists(skipNonVaccHead);
+
+        //     printf("o child %d eimai, eida to f, exiting...\n", (int)getpid());
         //     exit(0);
         // }
-        // printMonitorDirList(monitorDir);   
-        // freeMonitorDirList(monitorDir);  
-        // free(incMessage->code);
-        // free(incMessage->body);
-        // free(incMessage);
-    }
 
-    // printf("Child terminating\n");
-    // if (close(outfd) == -1) {
-    //     perror("Error closing named pipe");
-    // }
-    // exit(0);
+
+    }
 }
