@@ -142,6 +142,7 @@ int main(int argc, char **argv) {
     // -1: wait for any child process to end, NULL: ignore child's return status, WNOHANG: avoid suspending the caller 
     
     BloomFilter* bloomsHead = NULL;
+    BloomFilter* bloomFilter = NULL;
     int k = 16;
     int readyMonitors = 0;
     fd_set readFds;
@@ -176,15 +177,25 @@ int main(int argc, char **argv) {
 
                     // Received BF's virus
                     if (incMessage->code[0] == 'v') {
-                        bloomsHead = createBloom(bloomsHead, incMessage->body, bloomSize, k);
+                        // bloomFilter = insertBloomInParent(&bloomsHead, incMessage->body, bloomSize, k);
+                        
+                        if (bloomFilter = insertBloomInParent(&bloomsHead, incMessage->body, bloomSize, k)) {
+                            printf("Already yparxei BF gia to %s\n", incMessage->body);
+                        }
+                        else {
+                            bloomsHead = createBloom(bloomsHead, incMessage->body, bloomSize, k);
+                        }
+
+                        // bloomsHead = createBloom(bloomsHead, incMessage->body, bloomSize, k);
                         // printf("bloom virus %s\n", incMessage->body);
                     }
                     // Received BF's bitArray
                     if (incMessage->code[0] == 'b') {
                         // bloomsHead->bitArray = atoi(incMessage->body);
-                        char* end = NULL;
-                        *bloomsHead->bitArray = strtoul(incMessage->body, &end, 2);
+                        // char* end = NULL;
+                        // *bloomsHead->bitArray = strtoul(incMessage->body, &end, 2);
                         // printf("bloom bitArray %s\n", incMessage->body);
+                        // updateBitArray(bloomFilter, incMessage->body);
                     }
 
                     free(incMessage->code);
@@ -197,6 +208,9 @@ int main(int argc, char **argv) {
         else {
             printf ("Everyone is ready\n");
             printBloomsList(bloomsHead);
+            vaccineStatusBloom(bloomsHead, "1738", "Dengue");
+            vaccineStatusBloom(bloomsHead, "1958", "SARS-1");
+            
             size_t inputSize;
             char* input = NULL;
             char* command = NULL;

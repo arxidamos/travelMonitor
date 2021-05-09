@@ -70,7 +70,8 @@ int compare (const void * a, const void * b);
 int getUserCommand(char* input, size_t inputSize, char* command, int* readyMonitors, int numMonitors, BloomFilter* bloomsHead, ChildMonitor* childMonitor, char* dir_path, DIR* input_dir, int* outfd, int bufSize);
 
 
-
+BloomFilter* insertBloomInParent (BloomFilter** bloomsHead, char* virus, int size, int k);
+void updateBitArray (BloomFilter* bloomFilter, char* bitArray);
 MonitorDir* insertDir (MonitorDir** head, DIR* dir, char* country, char* files[], int fileCount);
 void printMonitorDirList (MonitorDir* monitorDir);
 void freeMonitorDirList (MonitorDir* head);

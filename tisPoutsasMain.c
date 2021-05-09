@@ -252,8 +252,41 @@ int main(int argc, char* argv[]) {
             while (current) {
                 // printf("sending Bloom Filter\n");
                 sendBytes('v', current->virus, outfd, bufSize);
-                char bitArrayString[current->size];
-                sprintf(bitArrayString, "%d", current->size);
+                // char bitArrayString[current->size];
+                // sprintf(bitArrayString, "%d", *current->bitArray);
+                // char* position = bitArrayString;
+                // for (int i=0; i<current->size; i++) {
+                //     position += sprintf(position, "%d", bitArrayString[i]);
+                // }
+                // int fofonka = 54064054;
+                // int* array = calloc(sizeof(fofonka), 1);
+                // array[0] = fofonka;
+
+                // char bitArrayString[sizeof(*array)];
+                // sprintf(bitArrayString, "%d", *array);
+                
+                int* array = current->bitArray;
+                // printf("Arxiko bit array: %d\n", *current->bitArray);
+                // for (int i=0; i<current->size; i++) {
+                //     printf("%d ", array[i]);
+                // }
+                // printf("\n================\n");
+                // char bitArrayString[current->size];
+                char* bitArrayString = calloc(current->size,1);
+                // // sprintf(bitArrayString, "%d", *array);
+                // for (int i=0; i<(current->size/sizeof(int)); i++) {
+                //     sprintf(bitArrayString[i], "%d", array[i]);
+                // }
+                int pos = 0;
+                for (int i=0; i<(current->size/sizeof(int)); i++) {
+                    pos += sprintf(bitArrayString+pos, "%d", array[i]);
+                }
+                // printf("FRankenstein made: %s\n",bitArrayString);
+                for (int i=0; i<10; i++) {
+                    printf("%c ",bitArrayString[i]);
+                }
+                printf("\n");
+
                 sendBytes('b', bitArrayString, outfd, bufSize);
                 current = current->next;
             }

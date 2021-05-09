@@ -49,6 +49,39 @@ BloomFilter* createBloom (BloomFilter* bloomsHead, char* virus, int size, int k)
     return newBloom;
 }
 
+BloomFilter* insertBloomInParent (BloomFilter** bloomsHead, char* virus, int size, int k) {
+    // Check if Bloom Filter for this virus exists
+    BloomFilter* current = *bloomsHead;
+    while (current) {
+        if (!strcmp(current->virus, virus)) {
+            // Return pointer to that virus' Bloom Filter
+            // printf("Already have Bloom for %s\n", virus);
+            return current;
+        }
+        current = current->next;
+    }
+    return NULL;
+}
+
+void updateBitArray (BloomFilter* bloomFilter, char* bitArray) {
+    // char* end = NULL;
+    // int* newArray = calloc(bloomFilter->size, 1);
+    // *newArray = strtoul(bitArray, &end, 2);
+    // for (int i=0; i<(*bloomFilter)->size; i++) {
+    //     (*bloomFilter)->bitArray[i] = (*bloomFilter)->bitArray[i] | newArray[i];
+    // }
+    // bloomFilter->bitArray = *bloomFilter->bitArray | *newArray;
+
+    // for (int i=0; i<)
+
+
+    for (int i=0; i<bloomFilter->size; i++) {
+        bloomFilter->bitArray[i] = bloomFilter->bitArray[i] | ((bitArray[i] - '0'));
+    }
+
+    // free(newArray);
+}
+
 // Insert new element in Bloom Filter
 void insertInBloom (BloomFilter* bloomsHead, char* citizenID, char* virus) {
     BloomFilter* current = bloomsHead;
