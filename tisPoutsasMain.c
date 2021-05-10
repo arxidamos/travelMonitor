@@ -70,7 +70,7 @@ int main(int argc, char* argv[]) {
         // printf("Message IN CHILD received: %s ", incMessage->body);
         // printf("Code IN CHILD received: %c\n", incMessage->code[0]);
         // Decode the message
-        analyseMessage(&monitorDir, incMessage, outfd, bufSize, dir_path, bloomsHead);
+        analyseMessage(&monitorDir, incMessage, outfd, &bufSize, dir_path, bloomsHead);
         
         // If 'F' received, country mapping just finished
         if (incMessage->code[0] == 'F') {
@@ -252,45 +252,50 @@ int main(int argc, char* argv[]) {
             while (current) {
                 // printf("sending Bloom Filter\n");
                 sendBytes('v', current->virus, outfd, bufSize);
-                // char bitArrayString[current->size];
-                // sprintf(bitArrayString, "%d", *current->bitArray);
-                // char* position = bitArrayString;
-                // for (int i=0; i<current->size; i++) {
-                //     position += sprintf(position, "%d", bitArrayString[i]);
-                // }
-                // int fofonka = 54064054;
-                // int* array = calloc(sizeof(fofonka), 1);
-                // array[0] = fofonka;
-
-                // char bitArrayString[sizeof(*array)];
-                // sprintf(bitArrayString, "%d", *array);
                 
-                int* array = current->bitArray;
-                // printf("Arxiko bit array: %d\n", *current->bitArray);
-                // for (int i=0; i<current->size; i++) {
-                //     printf("%d ", array[i]);
-                // }
-                // printf("\n================\n");
-                // char bitArrayString[current->size];
-                char* bitArrayString = calloc(current->size,1);
-                // // sprintf(bitArrayString, "%d", *array);
+                // int* array = current->bitArray;
+                // char* bitArrayString = calloc(current->size,1);
+                // int pos = 0;
                 // for (int i=0; i<(current->size/sizeof(int)); i++) {
-                //     sprintf(bitArrayString[i], "%d", array[i]);
+                //     pos += sprintf(bitArrayString+pos, "%d", array[i]);
                 // }
-                int pos = 0;
+                // for (int i=90; i<100; i++) {
+                //     printf("-%c-",bitArrayString[i]);
+                // }
+                // printf("\n");
+
+                // Get indices and respective content of BF's bitArray
+                int length = 0;
+                int* indices = malloc(sizeof(int));
                 for (int i=0; i<(current->size/sizeof(int)); i++) {
-                    pos += sprintf(bitArrayString+pos, "%d", array[i]);
+                    // Store only non zero indices
+                    if ( current->bitArray[i] != 0) {
+                        indices = realloc(indices, (length+2)*sizeof(int));
+                        indices[length] = i;    // Save indexSize
+                        indices[length+1] = current->bitArray[i];   // Save content
+                        length += 2;
+                    }
                 }
-                // printf("FRankenstein made: %s\n",bitArrayString);
-                for (int i=0; i<10; i++) {
-                    printf("%c ",bitArrayString[i]);
+                for (int i=0; i<length; i++) {
+                    printf("%d ", indices[i]);
                 }
                 printf("\n");
+                // Stringify the indices-content array
+                char* charArray = malloc(current->size);
+                int pos = 0;
+                for (int i=0; i<length; i++) {
+                    pos += sprintf(charArray+pos, "%d-", indices[i]);
+                }
+                printf("charArray: %s\n", charArray);
 
-                sendBytes('b', bitArrayString, outfd, bufSize);
+                // Send the stringified array
+                sendBytes('b', charArray, outfd, bufSize);
+                free(indices);
+                free(charArray);
+
                 current = current->next;
             }
-            printf("o child %d eimai, esteila ta filter\n", (int)getpid());
+            printf("o child %d eimai, esteila ta Bloom Filter\n", (int)getpid());
             sendBytes('F', "", outfd, bufSize);
             free(incMessage->code);
             free(incMessage->body);

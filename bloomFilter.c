@@ -65,21 +65,40 @@ BloomFilter* insertBloomInParent (BloomFilter** bloomsHead, char* virus, int siz
 
 void updateBitArray (BloomFilter* bloomFilter, char* bitArray) {
     // char* end = NULL;
-    // int* newArray = calloc(bloomFilter->size, 1);
-    // *newArray = strtoul(bitArray, &end, 2);
-    // for (int i=0; i<(*bloomFilter)->size; i++) {
-    //     (*bloomFilter)->bitArray[i] = (*bloomFilter)->bitArray[i] | newArray[i];
-    // }
-    // bloomFilter->bitArray = *bloomFilter->bitArray | *newArray;
-
-    // for (int i=0; i<)
-
-
-    for (int i=0; i<bloomFilter->size; i++) {
-        bloomFilter->bitArray[i] = bloomFilter->bitArray[i] | ((bitArray[i] - '0'));
+        // int* newArray = calloc(bloomFilter->size, 1);
+        // for (int i=0, j=0; (i<(bloomFilter->size/sizeof(int)) && j<strlen(bitArray) ); j++, i++) {
+        //     newArray[i] = (bitArray[j] - '0');
+        // }    // *newArray = strtoul(bitArray, &end, 2);
+        // for (int i=0; i<(bloomFilter->size/sizeof(int)); i++) {
+        //     bloomFilter->bitArray[i] = ( (bloomFilter->bitArray[i]) | newArray[i]);
+        // }
+        // for (int i=90; i<100; i++) {
+        //     printf("_%d_",bloomFilter->bitArray[i]);
+        // }
+        // printf("\n");
+    // free(newArray);
+    // Recreate the indices-content array
+    char* token;
+    int* newIndices = malloc(sizeof(int));
+    int length = 0;
+    while ( (token = strtok_r(bitArray, "-", &bitArray)) ) {
+        printf("%s=>", token);
+        // Every token has the index. The next one has the content
+        newIndices = realloc(newIndices, (length+1)*sizeof(int));
+        newIndices[length] = atoi(token);
+        printf("%d\n", newIndices[length]);
+        length++;
     }
 
-    // free(newArray);
+    int i=0;
+    while (i < length-1) {
+        int index = newIndices[i];
+        int content = newIndices[i+1];
+        bloomFilter->bitArray[index] = content;
+        i += 2;
+    }
+
+    free(newIndices);
 }
 
 // Insert new element in Bloom Filter

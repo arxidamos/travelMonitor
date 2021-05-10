@@ -57,6 +57,9 @@ int main(int argc, char **argv) {
         }        
 	}
 
+    int argBufferSize = bufferSize;
+    bufferSize = 100000; ////////////////////////////////
+
     // Create a diretory for the named pipes
     char* fifoPath = "./named_pipes";
     if (mkdir(fifoPath, 0777) == -1) {
@@ -141,6 +144,7 @@ int main(int argc, char **argv) {
     pid_t pid;
     // -1: wait for any child process to end, NULL: ignore child's return status, WNOHANG: avoid suspending the caller 
     
+    int newBloom = 0;
     BloomFilter* bloomsHead = NULL;
     BloomFilter* bloomFilter = NULL;
     int k = 16;
@@ -181,9 +185,11 @@ int main(int argc, char **argv) {
                         
                         if (bloomFilter = insertBloomInParent(&bloomsHead, incMessage->body, bloomSize, k)) {
                             printf("Already yparxei BF gia to %s\n", incMessage->body);
+                            newBloom = 1;
                         }
                         else {
                             bloomsHead = createBloom(bloomsHead, incMessage->body, bloomSize, k);
+                            newBloom = 0;
                         }
 
                         // bloomsHead = createBloom(bloomsHead, incMessage->body, bloomSize, k);
@@ -195,7 +201,18 @@ int main(int argc, char **argv) {
                         // char* end = NULL;
                         // *bloomsHead->bitArray = strtoul(incMessage->body, &end, 2);
                         // printf("bloom bitArray %s\n", incMessage->body);
-                        // updateBitArray(bloomFilter, incMessage->body);
+                        // for (int i=90; i<100; i++) {
+                        //     printf("'%c'",incMessage->body[i]);
+                        // }
+                        printf("\n");
+                        if (newBloom) {
+                            updateBitArray(bloomFilter, incMessage->body);
+                            newBloom = 0;
+                        }
+                        else {
+                            updateBitArray(bloomsHead, incMessage->body);
+                        }
+                    
                     }
 
                     free(incMessage->code);
@@ -206,10 +223,23 @@ int main(int argc, char **argv) {
         }
         // Monitors ready to receive queries
         else {
-            printf ("Everyone is ready\n");
+            printf ("Everyone is ready. Sending the scanned buffer size\n");
+
+            // Send the user defined bufferSize, only once to every Monitor
+            if (bufferSize != argBufferSize) {
+                bufferSize = argBufferSize;
+                sprintf(bufSizeString, "%d", bufferSize);
+                for (int i=0; i<numMonitors; i++) {
+                    sendBytes ('1', bufSizeString, writefd[i], bufferSize);
+                }
+            }
+            
             printBloomsList(bloomsHead);
             vaccineStatusBloom(bloomsHead, "1738", "Dengue");
+            vaccineStatusBloom(bloomsHead, "1738", "marika");
+
             vaccineStatusBloom(bloomsHead, "1958", "SARS-1");
+            vaccineStatusBloom(bloomsHead, "7296", "Chikungunya");
             
             size_t inputSize;
             char* input = NULL;
@@ -219,28 +249,8 @@ int main(int argc, char **argv) {
             if (getUserCommand(input, inputSize, command, &readyMonitors, numMonitors, bloomsHead, childMonitor, dir_path, input_dir, writefd, bufferSize) == 1) {
                 exit(0);
             }
-
-
-            // free(dir_path);
-            // closedir(input_dir);
-            // for (int i=0; i<numMonitors; i++) {
-            //     for (int j=0; j<childMonitor[i].countryCount; j++) {
-            //         free(childMonitor[i].country[j]);
-            //     }
-            //     free(childMonitor[i].country);
-            // }
-            // freeBlooms(bloomsHead);
-            // exit(0);
         }
     
-
-        // free(dir_path);
-        // closedir(input_dir);
-        // for (int i=0; i<numMonitors; i++) {
-        //     if (close(readfd[i]) == -1) {
-        //         perror("Error closing named pipes");
-        //     }
-        // }
 
         // for (int i=0; i<numMonitors; i++) {
         //     remove(pipeParentReads);
@@ -261,7 +271,4 @@ int main(int argc, char **argv) {
     //         printf("Exit status from %lu was %d\n", (long) childPid, exit_status);
     // }
 
-
-
-    // return 0;
 }

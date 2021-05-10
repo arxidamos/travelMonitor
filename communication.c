@@ -197,7 +197,6 @@ void signalHandler(void) {
 
 void checkSigQuit (State** stateHead, Record** recordsHead, BloomFilter** bloomsHead, SkipList** skipVaccHead, SkipList** skipNonVaccHead, MonitorDir* monitorDir, char* dir_path) {
     // Check for SIGQUIT
-    printf("energopoiisi tou checkSiqQUit\n");
     if (flagQuit) {
         // Deallocate memory
         free(dir_path);
@@ -219,7 +218,7 @@ int compare (const void * a, const void * b) {
   return strcmp(*(char* const*)a, *(char* const*)b );
 }
 
-void analyseMessage (MonitorDir** monitorDir, Message* message, int outfd, int bufSize, char* dir_path, BloomFilter* bloomsHead) {
+void analyseMessage (MonitorDir** monitorDir, Message* message, int outfd, int* bufSize, char* dir_path, BloomFilter* bloomsHead) {
     // Message 'C' is for countries assignment
     if (message->code[0] == 'C') {
         // Open the directory
@@ -279,6 +278,9 @@ void analyseMessage (MonitorDir** monitorDir, Message* message, int outfd, int b
     //     }
     //     sendBytes('F', "", outfd, bufSize);
     // }
+    if (message->code[0] == '1') {
+        *bufSize = atoi(message->body);
+    }
     return;
 }
 
