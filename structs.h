@@ -77,11 +77,6 @@ typedef struct MonitorDir {
     struct MonitorDir* next;
 } MonitorDir;
 
-typedef struct Buffer {
-    void* data;
-    int next;
-    int size;
-} Buffer;
 
 #endif
 

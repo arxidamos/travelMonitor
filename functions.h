@@ -60,8 +60,9 @@ void sigchldHandler();
 void sigQuitHandler (int sigNum);
 void signalHandler(void);
 void checkSigQuit (State** stateHead, Record** recordsHead, BloomFilter** bloomsHead, SkipList** skipVaccHead, SkipList** skipNonVaccHead, MonitorDir* MonitorDir, char* dir_path);
-void analyseChildMessage(Message* message, int *readyMonitors, int outfd, int bufSize);
-void analyseMessage (MonitorDir** monitorDir, Message* message, int outfd, int* bufSize, char* dir_path, BloomFilter* bloomsHead);
+void analyseChildMessage(Message* message, int *readyMonitors, int outfd, int bufSize, BloomFilter** bloomsHead, int bloomSize);
+// void analyseMessage (MonitorDir** monitorDir, Message* message, int outfd, int* bufSize, int* bloomSize, char* dir_path, BloomFilter* bloomsHead);
+void analyseMessage (MonitorDir** monitorDir, Message* message, int outfd, int* bufSize, int* bloomSize, char* dir_path, BloomFilter** bloomsHead, State** stateHead, Record** recordsHead, SkipList** skipVaccHead, SkipList** skipNonVaccHead);
 void getMessage (Message* incMessage, int incfd, int bufSize);
 char* readBytes(char* msg, int length, int fd, int bufSize);
 void sendBytes (char code, char* body, int fd, int bufSize);
@@ -69,7 +70,7 @@ void mapCountryDirs (char* dir_path, int numMonitors, int outfd[], ChildMonitor 
 int compare (const void * a, const void * b);
 int getUserCommand(char* input, size_t inputSize, char* command, int* readyMonitors, int numMonitors, BloomFilter* bloomsHead, ChildMonitor* childMonitor, char* dir_path, DIR* input_dir, int* outfd, int bufSize);
 
-
+void updateParentBlooms(BloomFilter* bloomsHead, int outfd, int bufSize);
 BloomFilter* insertBloomInParent (BloomFilter** bloomsHead, char* virus, int size, int k);
 void updateBitArray (BloomFilter* bloomFilter, char* bitArray);
 MonitorDir* insertDir (MonitorDir** head, DIR* dir, char* country, char* files[], int fileCount);
