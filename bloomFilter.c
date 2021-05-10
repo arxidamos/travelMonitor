@@ -82,11 +82,11 @@ void updateBitArray (BloomFilter* bloomFilter, char* bitArray) {
     int* newIndices = malloc(sizeof(int));
     int length = 0;
     while ( (token = strtok_r(bitArray, "-", &bitArray)) ) {
-        printf("%s=>", token);
+        // printf("%s=>", token);
         // Every token has the index. The next one has the content
         newIndices = realloc(newIndices, (length+1)*sizeof(int));
         newIndices[length] = atoi(token);
-        printf("%d\n", newIndices[length]);
+        // printf("%d\n", newIndices[length]);
         length++;
     }
 

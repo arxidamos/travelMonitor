@@ -58,7 +58,7 @@ int main(int argc, char **argv) {
 	}
 
     int argBufferSize = bufferSize;
-    bufferSize = 100000; ////////////////////////////////
+    // bufferSize = 100000; ////////////////////////////////
 
     // Create a diretory for the named pipes
     char* fifoPath = "./named_pipes";
@@ -183,12 +183,18 @@ int main(int argc, char **argv) {
                     if (incMessage->code[0] == 'v') {
                         // bloomFilter = insertBloomInParent(&bloomsHead, incMessage->body, bloomSize, k);
                         
-                        if (bloomFilter = insertBloomInParent(&bloomsHead, incMessage->body, bloomSize, k)) {
-                            printf("Already yparxei BF gia to %s\n", incMessage->body);
+                        char* token1;
+                        char* token2;
+                        token1 = strtok_r(incMessage->body, ";", &token2);
+
+                        if (bloomFilter = insertBloomInParent(&bloomsHead, token1, bloomSize, k)) {
+                            // printf("Already yparxei BF gia to %s\n", incMessage->body);
+                            updateBitArray(bloomFilter, token2);
                             newBloom = 1;
                         }
                         else {
-                            bloomsHead = createBloom(bloomsHead, incMessage->body, bloomSize, k);
+                            bloomsHead = createBloom(bloomsHead, token1, bloomSize, k);
+                            updateBitArray(bloomsHead, token2);
                             newBloom = 0;
                         }
 
@@ -204,7 +210,7 @@ int main(int argc, char **argv) {
                         // for (int i=90; i<100; i++) {
                         //     printf("'%c'",incMessage->body[i]);
                         // }
-                        printf("\n");
+                        // printf("\n");
                         if (newBloom) {
                             updateBitArray(bloomFilter, incMessage->body);
                             newBloom = 0;
@@ -225,22 +231,38 @@ int main(int argc, char **argv) {
         else {
             printf ("Everyone is ready. Sending the scanned buffer size\n");
 
-            // Send the user defined bufferSize, only once to every Monitor
-            if (bufferSize != argBufferSize) {
-                bufferSize = argBufferSize;
-                sprintf(bufSizeString, "%d", bufferSize);
-                for (int i=0; i<numMonitors; i++) {
-                    sendBytes ('1', bufSizeString, writefd[i], bufferSize);
-                }
-            }
+            // // Send the user defined bufferSize, only once to every Monitor
+            // if (bufferSize != argBufferSize) {
+            //     bufferSize = argBufferSize;
+            //     sprintf(bufSizeString, "%d", bufferSize);
+            //     for (int i=0; i<numMonitors; i++) {
+            //         sendBytes ('1', bufSizeString, writefd[i], bufferSize);
+            //     }
+            // }
             
             printBloomsList(bloomsHead);
+            // printf("Dengue ");
             vaccineStatusBloom(bloomsHead, "1738", "Dengue");
+            // printf("marika ");
             vaccineStatusBloom(bloomsHead, "1738", "marika");
-
+            // printf("SARS-1 ");
             vaccineStatusBloom(bloomsHead, "1958", "SARS-1");
+            // printf("Variola ");
+            vaccineStatusBloom(bloomsHead, "4215", "Variola");
+            // printf("CHikungunya ");
             vaccineStatusBloom(bloomsHead, "7296", "Chikungunya");
-            
+            // printBloomsList(bloomsHead);
+            // // printf("Dengue ");
+            // vaccineStatusBloom(bloomsHead, "1738", "Dengue");
+            // // printf("marika ");
+            // vaccineStatusBloom(bloomsHead, "1738", "marika");
+            // // printf("SARS-1 ");
+            // vaccineStatusBloom(bloomsHead, "1958", "SARS-1");
+            // // printf("Variola ");
+            // vaccineStatusBloom(bloomsHead, "4215", "Variola");
+            // // printf("CHikungunya ");
+            // vaccineStatusBloom(bloomsHead, "7296", "Chikungunya");
+
             size_t inputSize;
             char* input = NULL;
             char* command = NULL;

@@ -251,7 +251,7 @@ int main(int argc, char* argv[]) {
             BloomFilter* current = bloomsHead;
             while (current) {
                 // printf("sending Bloom Filter\n");
-                sendBytes('v', current->virus, outfd, bufSize);
+                // sendBytes('v', current->virus, outfd, bufSize);
                 
                 // int* array = current->bitArray;
                 // char* bitArrayString = calloc(current->size,1);
@@ -276,25 +276,33 @@ int main(int argc, char* argv[]) {
                         length += 2;
                     }
                 }
-                for (int i=0; i<length; i++) {
-                    printf("%d ", indices[i]);
-                }
-                printf("\n");
+                // for (int i=0; i<length; i++) {
+                //     printf("%d ", indices[i]);
+                // }
+                // printf("\n");
                 // Stringify the indices-content array
-                char* charArray = malloc(current->size);
+                char* bArray = malloc(current->size);
                 int pos = 0;
                 for (int i=0; i<length; i++) {
-                    pos += sprintf(charArray+pos, "%d-", indices[i]);
+                    pos += sprintf(bArray+pos, "%d-", indices[i]);
                 }
-                printf("charArray: %s\n", charArray);
+                // printf("charArray: %s\n", charArray);
+
+                char* charArray = malloc( (strlen(current->virus) + 1 + strlen(bArray) + 1) * sizeof(char));
+                strcpy(charArray, current->virus);
+                strcat(charArray, ";");
+                strcat(charArray, bArray);
 
                 // Send the stringified array
-                sendBytes('b', charArray, outfd, bufSize);
+                sendBytes('v', charArray, outfd, bufSize);
                 free(indices);
                 free(charArray);
 
                 current = current->next;
             }
+            // printf("Child %d\n", (int)getpid());
+            // vaccineStatusBloom(bloomsHead, "1958", "SARS-1");
+            // printf("Child %d\n", (int)getpid());
             printf("o child %d eimai, esteila ta Bloom Filter\n", (int)getpid());
             sendBytes('F', "", outfd, bufSize);
             free(incMessage->code);

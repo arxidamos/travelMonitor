@@ -14,7 +14,7 @@ void vaccineStatusBloom (BloomFilter* head, char* citizenID, char* virus) {
     int x;
 
     while (current) {
-        printf("Checking BLoom Filter %s\n", current->virus);
+        // printf("Checking BLoom Filter %s\n", current->virus);
         if (!strcmp(current->virus, virus)) {
             // Hash the id to get the bits we need to check
             for (unsigned int i=0; i<(current->k-1); i++) {
