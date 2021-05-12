@@ -5,8 +5,8 @@
 #include "structs.h"
 #include "functions.h"
 
-// Check if citizenID belongs to virus' Bloom Filter
-void travelRequest (BloomFilter* head, ChildMonitor* childMonitor, int numMonitors, int* incfd, int* outfd, int* accepted, int* rejected, char* citizenID, char* countryFrom, char* countryTo, char* virus) {
+// Check if citizenID is vaccinated
+void travelRequest (int* readyMonitors, BloomFilter* head, ChildMonitor* childMonitor, int numMonitors, int* incfd, int* outfd, int bufSize, int* accepted, int* rejected, char* citizenID, char* countryFrom, char* countryTo, char* virus, Date date) {
     BloomFilter* current = head;
     unsigned char* id = (unsigned char*)citizenID;
     unsigned long hash;
@@ -33,15 +33,26 @@ void travelRequest (BloomFilter* head, ChildMonitor* childMonitor, int numMonito
                 }
                 set = 1;
             }
-            // It's a "MAYBE" => ask Monitor
-            // ask monitor having countryfrom , get answer, send it to respective MOnitor to ++ counter
-            // printf("MAYBE\n");
 
-            // Ask the Monitor in charge of countryFrom
+            // It's a "MAYBE" => Ask the Monitor in charge of countryFrom
             for (int i=0; i<numMonitors; i++) {
                 for (int j=0; j<childMonitor[i].countryCount; j++) {
                     if ( !strcmp(childMonitor[i].country[j], countryFrom) ) {
-                        printf("I m sending to %s\n", childMonitor[i].country[j]);
+                        (*readyMonitors)--;
+                        char dateString[10];
+                        sprintf(dateString, "%d-%d-%d", date.day, date.month, date.year);
+                        char* fullString = malloc((strlen(citizenID) + 1 + strlen(virus) + 1 + strlen(countryTo) + 1 + strlen(dateString) + 1)*sizeof(char));
+                        strcpy(fullString, citizenID);
+                        strcat(fullString, ";");
+                        strcat(fullString, virus);
+                        strcat(fullString, ";");
+                        strcat(fullString, countryTo);
+                        strcat(fullString, ";");                        
+                        strcat(fullString, dateString);
+
+                        // Send citizenID, date to Monitor
+                        sendBytes('t', fullString, outfd[i], bufSize);
+                        free(fullString);
                         break;
                     }
                 }
@@ -52,6 +63,24 @@ void travelRequest (BloomFilter* head, ChildMonitor* childMonitor, int numMonito
     }
     printf("There is no Bloom Filter for the virus name you inserted.\n");
     return;
+}
+
+// Check if cizitenID is vaccinated 6 months prior to date
+char* processTravelRequest (SkipList* head, char* citizenID, char* virus, Date date) {
+    // Get this virus' SkipList 
+    head = virusSkipExists(head, virus);
+    // Check if this citizenID exists
+    SkipNode* node = searchSkipList(head, citizenID);
+    if (node) {
+        // Check if vacc date is prior to 6 months
+        if (compareSixMonths(node->vaccDate, date) == 0) {
+            return ("BUT");
+        }
+        else if (compareSixMonths(node->vaccDate, date) == 1) {
+            return ("YES");
+        }
+    }
+    return ("NO");
 }
 
 // Check if citizenID belongs to virus' Bloom Filter
@@ -333,6 +362,39 @@ int isBetweenDates (Date a, Date x, Date b) {
     else {
         return 0;
     }
+}
+
+// Check if vacc date "a" is within 6 months of travel date "b"
+int compareSixMonths (Date a, Date b) {
+    if ( (b.year - a.year) > 1 || (b.year - a.year) < 0 ) {
+        return 0;
+    }
+    else if ( (b.year - a.year) <= 1 ) {
+        int compMonths = 0;
+        // If not same year, add 12 months to 2nd for comparison
+        if ( (b.year - a.year) == 1) {
+            compMonths = (b.month+12) - a.month;
+        }
+        else if ( (b.month - a.month) == 0) {
+            compMonths = b.month - a.month;
+        }
+        if (compMonths > 6) {
+            return 0;
+        }
+        else if (compMonths == 6) {
+            // Also check days
+            if (b.day > a.day) {
+                return 0;
+            }
+            else {
+                return 1;
+            }
+        }
+        else if (compMonths < 6) {
+            return 1;
+        }
+    }
+    return 0;
 }
 
 // Return current system date

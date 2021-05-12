@@ -255,7 +255,7 @@ int compare (const void * a, const void * b) {
 }
 
 // Analyse incoming message in Monitor
-void analyseMessage (MonitorDir** monitorDir, Message* message, int outfd, int* bufSize, int* bloomSize, char* dir_path, BloomFilter** bloomsHead, State** stateHead, Record** recordsHead, SkipList** skipVaccHead, SkipList** skipNonVaccHead) {
+void analyseMessage (MonitorDir** monitorDir, Message* message, int outfd, int* bufSize, int* bloomSize, char* dir_path, BloomFilter** bloomsHead, State** stateHead, Record** recordsHead, SkipList** skipVaccHead, SkipList** skipNonVaccHead, int* accepted, int* rejected) {
     // Message 'C': Parent assigns countries to Monitor
     if (message->code[0] == 'C') {
         // Open directory
@@ -483,15 +483,61 @@ void analyseMessage (MonitorDir** monitorDir, Message* message, int outfd, int* 
         free(message->body);
         free(message);
 
-    }    
+    }
+    // Message 't': Parent sends travelRequest query
+    else if (message->code[0] == 't') {
+        char* citizenID;
+        char* token2;
+        char* token3;
+        char* virus;
+        char* countryTo;
+        char* dateString;
+        Date date;
+        // 1st token: citizenID
+        citizenID = strtok_r(message->body, ";", &token2);
+        // 2nd token: virus
+        virus = strtok_r(token2, ";", &token3);
+        // 3rd token: countryTo
+        countryTo = strtok_r(token3, ";", &dateString);
+        // 4th token: dateString
+        sscanf(dateString, "%d-%d-%d", &date.day, &date.month, &date.year);
+
+        // Check in structures
+        char* answer = processTravelRequest(*skipVaccHead, citizenID, virus, date);
+        if (!strcmp(answer, "YES")) {
+            (*accepted)++;
+        }
+        else if (!strcmp(answer, "NO") || !strcmp(answer, "BUT")) {
+            (*rejected)++;
+        }
+        // Answer to Parent, also pass 'countryTo'
+        char* fullString = malloc((strlen(countryTo) + 1 + strlen(answer) + 1)*sizeof(char));
+        strcpy(fullString, countryTo);
+        strcat(fullString, ";");
+        strcat(fullString, answer);
+        sendBytes('t', fullString, outfd, *bufSize);
+        free(fullString);
+    }
+    // Message '+': Parent informs to increment counters
+    else if (message->code[0] == '+') {
+        // pritnf("Why don't i get it?\n");
+        if (!strcmp(message->body, "YES")) {
+            (*accepted)++;
+            printf("Incremented accepteds\n");
+        }
+        else if (!strcmp(message->body, "NO") || !strcmp(message->body, "BUT")) {
+            (*rejected)++;
+            printf("Incremented accepteds\n");
+        }
+    }
     // free(message->code);
-    // free(message->body);
+    // free(message->body);`
     // free(message);
     return;
 }
 
 // Analyse incoming message in Parent
-void analyseChildMessage(Message* message, int *readyMonitors, int outfd, int bufSize, BloomFilter** bloomsHead, int bloomSize) {
+void analyseChildMessage(Message* message, ChildMonitor* childMonitor, int numMonitors, int *readyMonitors, int* outfd, int bufSize, BloomFilter** bloomsHead, int bloomSize, int* accepted, int* rejected) {
     // Message 'F': Monitor reports setup finished
     if (message->code[0] =='F') {
         (*readyMonitors)++;
@@ -515,6 +561,40 @@ void analyseChildMessage(Message* message, int *readyMonitors, int outfd, int bu
 
         // bloomsHead = createBloom(bloomsHead, incMessage->body, bloomSize, k);
         // printf("bloom virus %s\n", incMessage->body);
+    }
+    // Message 't': Monitor answers travelRequest query
+    if (message->code[0] == 't') {
+        printf("Hello from parent after 't' %d - %s\n", (int)getpid(), message->body);
+        char* countryTo;
+        char* answer;
+
+        // 1st token: countryTo, 2nd token: answer string
+        countryTo = strtok_r(message->body, ";", &answer);
+
+        if (!strcmp(answer, "YES")) {
+            printf("REQUEST ACCEPTED – HAPPY TRAVELS\n");
+            (*accepted)++;
+        }        
+        else if (!strcmp(answer, "NO")) {
+            printf("REQUEST REJECTED – YOU ARE NOT VACCINATED\n");
+            (*rejected)++;
+        }
+        else if (!strcmp(answer, "BUT")) {
+            printf("REQUEST REJECTED – YOU WILL NEED ANOTHER VACCINATION BEFORE TRAVEL DATE\n");
+            (*rejected)++;            
+        }
+        (*readyMonitors)++;
+        
+        // Inform the Monitor in charge of countryTo
+        for (int i=0; i<numMonitors; i++) {
+            for (int j=0; j<childMonitor[i].countryCount; j++) {
+                if ( !strcmp(childMonitor[i].country[j], countryTo) ) {
+                    // Send increment counter message
+                    sendBytes('+', answer, outfd[i], bufSize);
+                    break;
+                }
+            }
+        }
     }
 }
 
@@ -609,7 +689,7 @@ int getUserCommand(int* readyMonitors, int numMonitors, ChildMonitor* childMonit
                             strcpy(virus, command);
 
                             // vaccineStatusBloom(bloomsHead, citizenID, virus);
-                            travelRequest(bloomsHead, childMonitor, numMonitors, incfd, outfd, accepted, rejected, citizenID, countryFrom, countryTo, virus);
+                            travelRequest(readyMonitors, bloomsHead, childMonitor, numMonitors, incfd, outfd, bufSize, accepted, rejected, citizenID, countryFrom, countryTo, virus, date);
 
                             free(virus);
                         }

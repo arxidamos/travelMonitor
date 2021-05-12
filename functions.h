@@ -44,7 +44,8 @@ void freeSkipNodes (SkipList* skipList);
 
 // mainFunctions.c
 // Command functions
-void travelRequest (BloomFilter* head, ChildMonitor* childMonitor, int numMonitors, int* incfd, int* outfd, int* accepted, int* rejected, char* citizenID, char* countryFrom, char* countryTo, char* virus);
+void travelRequest (int* readyMonitors, BloomFilter* head, ChildMonitor* childMonitor, int numMonitors, int* incfd, int* outfd, int bufSize, int* accepted, int* rejected, char* citizenID, char* countryFrom, char* countryTo, char* virus, Date date);
+char* processTravelRequest (SkipList* head, char* citizenID, char* virus, Date date);
 void vaccineStatusBloom (BloomFilter* head, char* citizenID, char* virus);
 void vaccineStatus (SkipList* head, char* citizenID, char* virus);
 void vaccineStatusAll (SkipList* head, char* citizenID);
@@ -55,15 +56,16 @@ int insertCitizenCheck (Record* head, char* citizenID, char* fName, char* lName,
 int compareDate (Date a, Date b);
 int isBetweenDates (Date a, Date x, Date b);
 Date getTime ();
+int compareSixMonths (Date a, Date b);
 
 //
 void sigchldHandler();
 void sigQuitHandler (int sigNum);
 void handleSignals(void);
 void checkSigQuit (State** stateHead, Record** recordsHead, BloomFilter** bloomsHead, SkipList** skipVaccHead, SkipList** skipNonVaccHead, MonitorDir* MonitorDir, char* dir_path);
-void analyseChildMessage(Message* message, int *readyMonitors, int outfd, int bufSize, BloomFilter** bloomsHead, int bloomSize);
+void analyseChildMessage(Message* message, ChildMonitor* childMonitor, int numMonitors, int *readyMonitors, int* outfd, int bufSize, BloomFilter** bloomsHead, int bloomSize, int* accepted, int* rejected);
 // void analyseMessage (MonitorDir** monitorDir, Message* message, int outfd, int* bufSize, int* bloomSize, char* dir_path, BloomFilter* bloomsHead);
-void analyseMessage (MonitorDir** monitorDir, Message* message, int outfd, int* bufSize, int* bloomSize, char* dir_path, BloomFilter** bloomsHead, State** stateHead, Record** recordsHead, SkipList** skipVaccHead, SkipList** skipNonVaccHead);
+void analyseMessage (MonitorDir** monitorDir, Message* message, int outfd, int* bufSize, int* bloomSize, char* dir_path, BloomFilter** bloomsHead, State** stateHead, Record** recordsHead, SkipList** skipVaccHead, SkipList** skipNonVaccHead, int* accepted, int* rejected);
 int getMessage (Message* incMessage, int incfd, int bufSize);
 char* readBytes(char* msg, int length, int fd, int bufSize);
 void sendBytes (char code, char* body, int fd, int bufSize);

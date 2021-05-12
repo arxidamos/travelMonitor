@@ -49,6 +49,8 @@ int main(int argc, char* argv[]) {
     SkipList* skipNonVaccHead = NULL;
     // Seed the time generator
     srand(time(NULL));
+    int accepted = 0;
+    int rejected = 0;
 
    // Initialize bufSize and bloomSize
     int bufSize = 10;
@@ -57,11 +59,11 @@ int main(int argc, char* argv[]) {
     // Get 1st message for bufSize
     Message* firstMessage = malloc(sizeof(Message));
     getMessage(firstMessage, incfd, bufSize);
-    analyseMessage(&monitorDir, firstMessage, outfd, &bufSize, &bloomSize, dir_path, &bloomsHead, &stateHead, &recordsHead, &skipVaccHead, &skipNonVaccHead);
+    analyseMessage(&monitorDir, firstMessage, outfd, &bufSize, &bloomSize, dir_path, &bloomsHead, &stateHead, &recordsHead, &skipVaccHead, &skipNonVaccHead, &accepted, &rejected);
  
     // Get 2nd message for bloomSize
     getMessage(firstMessage, incfd, bufSize);
-    analyseMessage(&monitorDir, firstMessage, outfd, &bufSize, &bloomSize, dir_path, &bloomsHead, &stateHead, &recordsHead, &skipVaccHead, &skipNonVaccHead);
+    analyseMessage(&monitorDir, firstMessage, outfd, &bufSize, &bloomSize, dir_path, &bloomsHead, &stateHead, &recordsHead, &skipVaccHead, &skipNonVaccHead, &accepted, &rejected);
 
     free(firstMessage->code);
     free(firstMessage->body);
@@ -79,7 +81,7 @@ int main(int argc, char* argv[]) {
         // printf("Code IN CHILD received: %c\n", incMessage->code[0]);
         
         // Decode incoming messages
-        analyseMessage(&monitorDir, incMessage, outfd, &bufSize, &bloomSize, dir_path, &bloomsHead, &stateHead, &recordsHead, &skipVaccHead, &skipNonVaccHead);
+        analyseMessage(&monitorDir, incMessage, outfd, &bufSize, &bloomSize, dir_path, &bloomsHead, &stateHead, &recordsHead, &skipVaccHead, &skipNonVaccHead, &accepted, &rejected);
         
         
         // printStateList(stateHead);

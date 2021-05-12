@@ -172,7 +172,7 @@ int main(int argc, char **argv) {
                     // printf("Code received: %c\n", incMessage->code[0]);
                     
                     // Decode incoming messages
-                    analyseChildMessage(incMessage, &readyMonitors, writefd[i], bufferSize, &bloomsHead, bloomSize);
+                    analyseChildMessage(incMessage, childMonitor, numMonitors, &readyMonitors, writefd, bufferSize, &bloomsHead, bloomSize, &accepted, &rejected);
 
                     free(incMessage->code);
                     free(incMessage->body);
