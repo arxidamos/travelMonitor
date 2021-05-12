@@ -16,14 +16,17 @@ static volatile sig_atomic_t flagQuit;
 // static sigset_t signalSet;
 
 // Read incoming message
-void getMessage (Message* incMessage, int incfd, int bufSize) {
+int getMessage (Message* incMessage, int incfd, int bufSize) {
     // 1st get the code
     incMessage->code = calloc(1, sizeof(char));
-    incMessage->code = readBytes(incMessage->code, 1, incfd, bufSize);
+    // incMessage->code = readBytes(incMessage->code, 1, incfd, bufSize);
+    if ( (incMessage->code = readBytes(incMessage->code, 1, incfd, bufSize)) == NULL) {
+        return -1;
+    }
 
     // 2nd get the header, containing the length of the actual message
-    char* header = calloc((DIGITS + 1), sizeof(char));
-    header = readBytes(header, DIGITS, incfd, bufSize);
+    char* header = calloc((LENGTH + 1), sizeof(char));
+    header = readBytes(header, LENGTH, incfd, bufSize);
     header[strlen(header)] = '\0';
     incMessage->length = atoi(header+1);    
 
@@ -33,28 +36,36 @@ void getMessage (Message* incMessage, int incfd, int bufSize) {
     incMessage->body[incMessage->length] = '\0';
 
     free(header);
-    return;
+    return 1;
 }
 
 // Read incoming message aux function
 char* readBytes(char* msg, int length, int fd, int bufSize) {
     char buf[bufSize];
     memset(buf, 0, bufSize);
-    int receivedTotal = 0;
-
-    // Read the message
-    while (receivedTotal < length) {
-        // If bytes left unread < pipe size, read those only
-        int left = length - receivedTotal;
-        int bytesToRead = left < bufSize ? left : bufSize;
-
+    
+    // Get the message
+    int receivedSoFar = 0;
+    while (receivedSoFar < length) {
         int received;
-        if ( (received = read(fd, buf, bytesToRead)) == -1 ) {
-            perror("Error with reading message");
-            exit(1);
+        int left = length - receivedSoFar;
+        // Bytes left unread < buf size => read them all
+        if (left < bufSize) {
+            if ( (received = read(fd, buf, left)) == -1 ) {
+                perror("Didn't read message");
+                return(NULL);
+            }
         }
-        strncpy(msg + receivedTotal, buf, received);
-        receivedTotal += received;
+        // Bytes left unread > buf size => read buf size only
+        else {
+            if ( (received = read(fd, buf, bufSize)) == -1 ) {
+                perror("Didn't read message");
+                return(NULL);
+            }
+        }
+        strncpy(msg + receivedSoFar, buf, received);
+        // Keep receiving until whole message received
+        receivedSoFar += received;
     }
     return msg;
 }
@@ -64,42 +75,41 @@ void sendBytes (char code, char* body, int fd, int bufSize) {
     char buf[bufSize];
     memset(buf, 0, bufSize);
 
-    // Message: charCode + length of message +  message + \0
-    char* msg = malloc( sizeof(char)*(1 + DIGITS + strlen(body) + 1) );
+    // Message: [charCode] + [length of message] +  [message] + [\0]
+    char* msg = malloc( sizeof(char)*(1 + LENGTH + strlen(body) + 1) );
     // First char: code
     msg[0] = code;
-    // Next DIGITS chars: message length
-    snprintf(msg+1, DIGITS+1, "%0*d", DIGITS, (int)strlen(body));
+    // Next LENGTH chars: message length
+    snprintf(msg+1, LENGTH+1, "%0*d", LENGTH, (int)strlen(body));
     // Next strlen(message) chars: message
-    snprintf(msg+DIGITS+1, strlen(body)+1, "%s", body);
+    snprintf(msg+LENGTH+1, strlen(body)+1, "%s", body);
     // Last char: '\0'
-    msg[DIGITS+strlen(body)+1] = '\0';
+    msg[LENGTH+strlen(body)+1] = '\0';
    
     // Send the message
-    int sentTotal = 0;
-    while ( sentTotal < strlen(msg)) {
-        int left = strlen(msg) - sentTotal;
-        int bytesToWrite; //= left < bufSize ? left : bufSize;
-        // Bytes left to send can't fit in pipe => send only bufSize bytes
+    int sentSoFar = 0;
+    while (sentSoFar < strlen(msg)) {
+        int sent;
+        int left = strlen(msg) - sentSoFar;
+        // Bytes left for sending fit in buf => send them all
         if (left < bufSize) {
-            bytesToWrite = left;
+            strncpy(buf, msg + sentSoFar, left);
+            if ( (sent = write(fd, buf, left)) == -1) {
+                perror("Error with writing message");
+                exit(1);
+            }
         }
-        // Bytes left fit in pipe => send them all
+        // Bytes left don't fit in buf => send only bufSize bytes
         else {
-            bytesToWrite = bufSize;
-        }
-
-        strncpy(buf, msg + sentTotal, bytesToWrite);
-        
+            strncpy(buf, msg + sentSoFar, bufSize);
+            if ( (sent = write(fd, buf, bufSize)) == -1) {
+                perror("Error with writing message");
+                exit(1);
+            }
+        }        
         // Keep sending until whole message sent
-        int sent;       
-        if ( (sent = write(fd, buf, bytesToWrite)) == -1) {
-            perror("Error with writing message");
-            exit(1);
-        }
-        sentTotal += sent;
+        sentSoFar += sent;
     }
-
     free(msg);
     return;
 }
@@ -151,7 +161,7 @@ void sigchldHandler () {
     int status;
     pid_t pid;
     while (1) {
-    // -1: wait any child to end, NULL: ignore child's return status, WNOHANG: don't suspending caller
+    // -1: wait any child to end, NULL: ignore child's return status, WNOHANG: don't suspend caller
         pid = waitpid(-1, &status, WNOHANG);
         if (pid == 0) {
             return;
@@ -167,37 +177,59 @@ void sigchldHandler () {
 
 void sigQuitHandler (int sigNum) {
     printf("Caught a SIGQUIT\n");
-    flagQuit = 1;
+    // flagQuit = 1;
 }
 
-void signalHandler(void) {
-    struct sigaction sigAct;
-    // Signal set
-    sigset_t set;
-    sigfillset(&set);
+void sigIntHandler (int sigNum) {
+    printf("Caught a SIGINT\n");
+    // flagQuit = 1;
+}
 
-    // Block all signals (that are present in set)
-    if (sigprocmask(SIG_SETMASK, &set, NULL) == -1) {
-        perror("Error with setting signal mask");
-    }
-    memset(&sigAct, 0, sizeof(struct sigaction));
-    // Initialise flags
-    flagQuit = 0;
+void handleSignals(void) {
+    // struct sigaction sigAct;
+        // // Signal set
+        // sigset_t set;
+        // sigfillset(&set);
 
+        // // Block all signals (that are present in set)
+        // if (sigprocmask(SIG_SETMASK, &set, NULL) == -1) {
+        //     perror("Error with setting signal mask");
+        // }
+        // memset(&sigAct, 0, sizeof(struct sigaction));
+        // // Initialise flags
+        // flagQuit = 0;
+
+        // sigAct.sa_handler = sigQuitHandler;
+        // sigaction(SIGQUIT, &sigAct, NULL);
+
+        // // // Add only certain signals in signalSet, will need them (to block when receiving commands)
+        // // sigemptyset(&signalSet);
+        // // sigaddset(&signalSet, SIGINT);
+        // // sigaddset(&signalSet, SIGQUIT);
+        // // sigaddset(&signalSet, SIGUSR1);
+
+        // // Unblock all signals
+        // sigemptyset(&set);
+        // if (sigprocmask(SIG_SETMASK, &set, NULL) == -1) {
+        //     perror("Error with setting signal mask");
+    // }
+
+    static struct sigaction sigAct;
+
+    sigfillset(&sigAct.sa_mask);
+    sigAct.sa_handler = sigIntHandler;
+    sigaction(SIGINT, &sigAct, NULL);
+    
     sigAct.sa_handler = sigQuitHandler;
     sigaction(SIGQUIT, &sigAct, NULL);
+    
+    // sigAct.sa_handler = sigChldHandler;
+    // sigaction(SIGCHLD, &sigAct, NULL);
+    
+    // sigAct.sa_handler = sigUsr2Handler;
+    // sigaction(SIGUSR2, &sigAct, NULL);
 
-    // // Add only certain signals in signalSet, will need them (to block when receiving commands)
-    // sigemptyset(&signalSet);
-    // sigaddset(&signalSet, SIGINT);
-    // sigaddset(&signalSet, SIGQUIT);
-    // sigaddset(&signalSet, SIGUSR1);
 
-    // Unblock all signals
-    sigemptyset(&set);
-    if (sigprocmask(SIG_SETMASK, &set, NULL) == -1) {
-        perror("Error with setting signal mask");
-    }
 }
 
 void checkSigQuit (State** stateHead, Record** recordsHead, BloomFilter** bloomsHead, SkipList** skipVaccHead, SkipList** skipNonVaccHead, MonitorDir* monitorDir, char* dir_path) {
@@ -441,17 +473,11 @@ void analyseMessage (MonitorDir** monitorDir, Message* message, int outfd, int* 
             }
             curDir = curDir->next;
         }
-        // printStateList(stateHead);
-        // printRecordsList(recordsHead);
-        // printBloomsList(bloomsHead);
-        // printSkipLists(skipVaccHead);
-        // printf("---------------------\n");
-        // printSkipLists(skipNonVaccHead);
 
         // Initialization finished, send Blooms to parent
         updateParentBlooms(*bloomsHead, outfd, *bufSize);
 
-        
+        // Report setup finished to Parent
         sendBytes('F', "", outfd, *bufSize);
         free(message->code);
         free(message->body);
@@ -492,12 +518,20 @@ void analyseChildMessage(Message* message, int *readyMonitors, int outfd, int bu
     }
 }
 
-int getUserCommand(char* input, size_t inputSize, char* command, int* readyMonitors, int numMonitors, BloomFilter* bloomsHead, ChildMonitor* childMonitor, char* dir_path, DIR* input_dir, int* outfd, int bufSize) {
+// Receive commands from user
+int getUserCommand(int* readyMonitors, int numMonitors, ChildMonitor* childMonitor, BloomFilter* bloomsHead,
+ char* dir_path, DIR* input_dir, int* incfd, int* outfd, int bufSize, int* accepted, int* rejected) {
+    size_t inputSize;
+    char* input = NULL;
+    char* command = NULL;
+
     getline(&input, &inputSize, stdin);
     input[strlen(input)-1] = '\0'; // Cut terminating '\n' from string
     
     char* citizenID;
     char* virus;
+    Date date;
+
     // Get the command
     command = strtok(input, " ");
     if (!strcmp(command, "/exit")) {
@@ -513,12 +547,13 @@ int getUserCommand(char* input, size_t inputSize, char* command, int* readyMonit
         freeBlooms(bloomsHead);
         // Send SIGQUIT signal to childs
         for (int i = 0; i < numMonitors; ++i) {
-            printf("SQIGUIT sent to childs\n");
-            kill(outfd[i], SIGQUIT);
+            printf("SIGKILL sent to childs\n");
+            kill(outfd[i], SIGKILL);
         }
+     
         return 1;
     }
-    if (!strcmp(command, "/vaccineStatusBloom")) {
+    else if (!strcmp(command, "/vaccineStatusBloom")) {
         // Get citizenID
         command = strtok(NULL, " ");
         if (command) {
@@ -543,6 +578,65 @@ int getUserCommand(char* input, size_t inputSize, char* command, int* readyMonit
         }
         free(input);
     }
+    else if (!strcmp(command, "/travelRequest")) {
+        // Get citizenID
+        command = strtok(NULL, " ");
+        if (command) {
+            citizenID = malloc(strlen(command)+1);
+            strcpy(citizenID, command);
+
+            // Get date
+            command = strtok(NULL, " ");
+            if (command) {
+                sscanf(command, "%d-%d-%d", &date.day, &date.month, &date.year);
+
+                // Get countryFrom
+                command = strtok(NULL, " ");
+                if (command) {
+                    char* countryFrom = malloc(strlen(command)+1);
+                    strcpy(countryFrom, command);
+
+                    // Get countryTo
+                    command = strtok(NULL, " ");
+                    if (command) {
+                        char* countryTo = malloc(strlen(command)+1);
+                        strcpy(countryTo, command);
+
+                        // Get virusName
+                        command = strtok(NULL, " ");
+                        if (command) {
+                            virus = malloc(strlen(command)+1);
+                            strcpy(virus, command);
+
+                            // vaccineStatusBloom(bloomsHead, citizenID, virus);
+                            travelRequest(bloomsHead, childMonitor, numMonitors, incfd, outfd, accepted, rejected, citizenID, countryFrom, countryTo, virus);
+
+                            free(virus);
+                        }
+                        else {
+                            printf("Please also enter the following parameter: virusName.\n");
+                        }
+                        free(countryTo);
+                    }
+                    else {
+                        printf("Please also enter the following parameters: countryTo virusName.\n");
+                    }
+                    free(countryFrom);
+                }
+                else {
+                    printf("Please also enter the following parameters: countryFrom countryTo virusName.\n");
+                }
+            }
+            else {
+                printf("Please also enter the following parameters: date countryFrom countryTo virusName.\n");
+            }
+            free(citizenID);
+        }
+        else {
+            printf("Please enter the following parameters: citizenID date countryFrom countryTo virusName.\n");
+        }
+        free(input);
+    }
     else {
         printf("Command '%s' is unknown\n", command);
         printf("Please type a known command:\n");
@@ -551,6 +645,7 @@ int getUserCommand(char* input, size_t inputSize, char* command, int* readyMonit
     return 0;
 }
 
+// Send Blooms to Parent
 void updateParentBlooms(BloomFilter* bloomsHead, int outfd, int bufSize) {
     BloomFilter* current = bloomsHead;
     // Iterate through all Bloom Filters' bit arrays

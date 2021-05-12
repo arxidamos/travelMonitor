@@ -44,6 +44,7 @@ void freeSkipNodes (SkipList* skipList);
 
 // mainFunctions.c
 // Command functions
+void travelRequest (BloomFilter* head, ChildMonitor* childMonitor, int numMonitors, int* incfd, int* outfd, int* accepted, int* rejected, char* citizenID, char* countryFrom, char* countryTo, char* virus);
 void vaccineStatusBloom (BloomFilter* head, char* citizenID, char* virus);
 void vaccineStatus (SkipList* head, char* citizenID, char* virus);
 void vaccineStatusAll (SkipList* head, char* citizenID);
@@ -58,17 +59,18 @@ Date getTime ();
 //
 void sigchldHandler();
 void sigQuitHandler (int sigNum);
-void signalHandler(void);
+void handleSignals(void);
 void checkSigQuit (State** stateHead, Record** recordsHead, BloomFilter** bloomsHead, SkipList** skipVaccHead, SkipList** skipNonVaccHead, MonitorDir* MonitorDir, char* dir_path);
 void analyseChildMessage(Message* message, int *readyMonitors, int outfd, int bufSize, BloomFilter** bloomsHead, int bloomSize);
 // void analyseMessage (MonitorDir** monitorDir, Message* message, int outfd, int* bufSize, int* bloomSize, char* dir_path, BloomFilter* bloomsHead);
 void analyseMessage (MonitorDir** monitorDir, Message* message, int outfd, int* bufSize, int* bloomSize, char* dir_path, BloomFilter** bloomsHead, State** stateHead, Record** recordsHead, SkipList** skipVaccHead, SkipList** skipNonVaccHead);
-void getMessage (Message* incMessage, int incfd, int bufSize);
+int getMessage (Message* incMessage, int incfd, int bufSize);
 char* readBytes(char* msg, int length, int fd, int bufSize);
 void sendBytes (char code, char* body, int fd, int bufSize);
 void mapCountryDirs (char* dir_path, int numMonitors, int outfd[], ChildMonitor childMonitor[], int bufSize);
 int compare (const void * a, const void * b);
-int getUserCommand(char* input, size_t inputSize, char* command, int* readyMonitors, int numMonitors, BloomFilter* bloomsHead, ChildMonitor* childMonitor, char* dir_path, DIR* input_dir, int* outfd, int bufSize);
+int getUserCommand(int* readyMonitors, int numMonitors, ChildMonitor* childMonitor, BloomFilter* bloomsHead,
+ char* dir_path, DIR* input_dir, int* incfd, int* outfd, int bufSize, int* accepted, int* rejected);
 
 void updateParentBlooms(BloomFilter* bloomsHead, int outfd, int bufSize);
 BloomFilter* insertBloomInParent (BloomFilter** bloomsHead, char* virus, int size, int k);

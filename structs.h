@@ -5,7 +5,7 @@
 #include <string.h>
 #include <dirent.h>
 #define MAX 32
-#define DIGITS 10
+#define LENGTH 10
 // 'F'  :   ready Monitor
 // 'C'  :   country mapping
 

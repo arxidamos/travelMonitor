@@ -136,26 +136,25 @@ int main(int argc, char **argv) {
         }
         printf("\n");
     }
-
     
     // Initialise variables for structures
     BloomFilter* bloomsHead = NULL;
-    // BloomFilter* bloomFilter = NULL;
-    // int k = 16;
     int readyMonitors = 0;
-    fd_set readFds;
+    int accepted =0;
+    int rejected = 0;
+
+    fd_set incfds;
     
     while (1) {
         if (readyMonitors < numMonitors) {
             // Zero the fd_set
-            FD_ZERO(&readFds);
+            FD_ZERO(&incfds);
             for (int i=0; i<numMonitors; i++) {
-                FD_SET(readfd[i], &readFds);
-                FD_SET(writefd[i], &readFds);
+                FD_SET(readfd[i], &incfds);
             }
-            // Select() on readfds
-            int retVal = select(FD_SETSIZE, &readFds, NULL, NULL, NULL);
-            if (retVal == -1) {
+            // Select() on incfds
+            int retVal;
+            if ( (retVal = select(FD_SETSIZE, &incfds, NULL, NULL, NULL)) == -1) {
                 perror("Error with select");
             }
             if (retVal == 0) {
@@ -165,7 +164,7 @@ int main(int argc, char **argv) {
             // Iterate over fds to check if inside readFds
             for (int i=0; i<numMonitors; i++) {
                 // Check if available data in this fd
-                if (FD_ISSET(readfd[i], &readFds)) {
+                if (FD_ISSET(readfd[i], &incfds)) {
                     // Read incoming messages
                     Message* incMessage = malloc(sizeof(Message));
                     getMessage(incMessage, readfd[i], bufferSize);
@@ -192,13 +191,11 @@ int main(int argc, char **argv) {
             // vaccineStatusBloom(bloomsHead, "4215", "Variola");
             // vaccineStatusBloom(bloomsHead, "7296", "Chikungunya");
 
-            size_t inputSize;
-            char* input = NULL;
-            char* command = NULL;
             printf("Type a command:\n");            
             
             // Wait for user's input
-            if (getUserCommand(input, inputSize, command, &readyMonitors, numMonitors, bloomsHead, childMonitor, dir_path, input_dir, writefd, bufferSize) == 1) {
+            if (getUserCommand(&readyMonitors, numMonitors, childMonitor, bloomsHead,
+             dir_path, input_dir, readfd, writefd, bufferSize, &accepted, &rejected) == 1) {
                 exit(0);
             }
         }

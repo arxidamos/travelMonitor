@@ -8,7 +8,7 @@
 
 Α) Εφαρμογή travelMonitor
 
-
+SIGINT sto child mesw entolis sto terminal: o antistoixos signal hanlder to pianei kai to child synexizei kanonika
 
 Β) Script create_infiles.sh
 

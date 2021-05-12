@@ -6,6 +6,55 @@
 #include "functions.h"
 
 // Check if citizenID belongs to virus' Bloom Filter
+void travelRequest (BloomFilter* head, ChildMonitor* childMonitor, int numMonitors, int* incfd, int* outfd, int* accepted, int* rejected, char* citizenID, char* countryFrom, char* countryTo, char* virus) {
+    BloomFilter* current = head;
+    unsigned char* id = (unsigned char*)citizenID;
+    unsigned long hash;
+    unsigned int set = 1; // All 0s and leftmost bit=1
+    int x;
+
+    while (current) {
+        // printf("Checking BLoom Filter %s\n", current->virus);
+        if (!strcmp(current->virus, virus)) {
+            // Hash the id to get the bits we need to check
+            for (unsigned int i=0; i<(current->k-1); i++) {
+                // Hash the ID
+                hash = hash_i(id, i);
+                // Get the equivalent bit position that may be 1
+                x = hash%(current->size*8);
+                // Shift left the *set* bit
+                set = set << (x%32);
+
+                // Check if bitArray has *1* in the same spot
+                if ((current->bitArray[x/32] & set) == 0) {
+                    printf("REQUEST REJECTED - YOU ARE NOT VACCINATED\n");
+                    (*rejected)++;
+                    return;
+                }
+                set = 1;
+            }
+            // It's a "MAYBE" => ask Monitor
+            // ask monitor having countryfrom , get answer, send it to respective MOnitor to ++ counter
+            // printf("MAYBE\n");
+
+            // Ask the Monitor in charge of countryFrom
+            for (int i=0; i<numMonitors; i++) {
+                for (int j=0; j<childMonitor[i].countryCount; j++) {
+                    if ( !strcmp(childMonitor[i].country[j], countryFrom) ) {
+                        printf("I m sending to %s\n", childMonitor[i].country[j]);
+                        break;
+                    }
+                }
+            }
+            return;
+        }
+        current = current->next;
+    }
+    printf("There is no Bloom Filter for the virus name you inserted.\n");
+    return;
+}
+
+// Check if citizenID belongs to virus' Bloom Filter
 void vaccineStatusBloom (BloomFilter* head, char* citizenID, char* virus) {
     BloomFilter* current = head;
     unsigned char* id = (unsigned char*)citizenID;
