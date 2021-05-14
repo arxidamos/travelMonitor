@@ -62,6 +62,7 @@ int compareSixMonths (Date a, Date b);
 void sigchldHandler();
 void sigQuitHandler (int sigNum);
 void handleSignals(void);
+void checkSignalFlags(MonitorDir** monitorDir, int* accepted, int* rejected);
 void checkSigQuit (State** stateHead, Record** recordsHead, BloomFilter** bloomsHead, SkipList** skipVaccHead, SkipList** skipNonVaccHead, MonitorDir* MonitorDir, char* dir_path);
 void analyseChildMessage(Message* message, ChildMonitor* childMonitor, int numMonitors, int *readyMonitors, int* outfd, int bufSize, BloomFilter** bloomsHead, int bloomSize, int* accepted, int* rejected);
 // void analyseMessage (MonitorDir** monitorDir, Message* message, int outfd, int* bufSize, int* bloomSize, char* dir_path, BloomFilter* bloomsHead);
@@ -72,7 +73,8 @@ void sendBytes (char code, char* body, int fd, int bufSize);
 void mapCountryDirs (char* dir_path, int numMonitors, int outfd[], ChildMonitor childMonitor[], int bufSize);
 int compare (const void * a, const void * b);
 int getUserCommand(int* readyMonitors, int numMonitors, ChildMonitor* childMonitor, BloomFilter* bloomsHead,
- char* dir_path, DIR* input_dir, int* incfd, int* outfd, int bufSize, int* accepted, int* rejected);
+char* dir_path, DIR* input_dir, int* incfd, int* outfd, int bufSize, int* accepted, int* rejected);
+
 
 void updateParentBlooms(BloomFilter* bloomsHead, int outfd, int bufSize);
 BloomFilter* insertBloomInParent (BloomFilter** bloomsHead, char* virus, int size, int k);

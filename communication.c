@@ -1,25 +1,25 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <dirent.h>
+#include <string.h>
 #include <unistd.h>
-#include "structs.h"
-#include "functions.h"
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <fcntl.h>
 #include <limits.h>
 #include <signal.h>
+#include <errno.h>
 #include "functions.h"
 #include "structs.h"
-#include <errno.h>
-static volatile sig_atomic_t flagQuit;
+
+static volatile sig_atomic_t flagQuit = 0;
+static volatile sig_atomic_t flagInt = 0;
 // static sigset_t signalSet;
 
 // Read incoming message
 int getMessage (Message* incMessage, int incfd, int bufSize) {
     // 1st get the code
     incMessage->code = calloc(1, sizeof(char));
-    // incMessage->code = readBytes(incMessage->code, 1, incfd, bufSize);
     if ( (incMessage->code = readBytes(incMessage->code, 1, incfd, bufSize)) == NULL) {
         return -1;
     }
@@ -177,12 +177,12 @@ void sigchldHandler () {
 
 void sigQuitHandler (int sigNum) {
     printf("Caught a SIGQUIT\n");
-    // flagQuit = 1;
+    flagQuit = 1;
 }
 
 void sigIntHandler (int sigNum) {
     printf("Caught a SIGINT\n");
-    // flagQuit = 1;
+    flagInt = 1;
 }
 
 void handleSignals(void) {
@@ -230,6 +230,77 @@ void handleSignals(void) {
     // sigaction(SIGUSR2, &sigAct, NULL);
 
 
+}
+
+void checkSignalFlags(MonitorDir** monitorDir, int* accepted, int* rejected) {
+    if (flagQuit == 1 || flagInt == 1) {
+        // Write to "log_file.pid"
+        printf("TOTAL TRAVEL REQUESTS %d\n", (*accepted + *rejected));
+        printf("ACCEPTED %d\nREJECTED %d\n", (*accepted), (*rejected));
+
+        // Create file's name, inside "log_files" dir
+        char* dirName = "log_files/";
+        char* fileName = "log_file.";
+        char* fullName = malloc(sizeof(char)*(strlen(dirName) + strlen(fileName) + LENGTH + 1));
+        sprintf(fullName, "%s%s%d", dirName, fileName, (int)getpid());
+        printf("LOG FILE NAME: %s\n", fullName);
+
+        // Create file
+        int filefd;
+        if ( (filefd = creat(fullName, RWE)) == -1) {
+            perror("Error with creating log_file");
+            exit(1);
+        }
+        free(fullName);
+
+        int sentSoFar = 0;
+        // 1st write this Monitor's countries
+        MonitorDir* current = (*monitorDir);
+        while (current) {
+            // Keep writing to file till all countries written
+            if ( (sentSoFar = write(filefd, current->country, strlen(current->country))) == -1) {
+                perror("Error with writing to log_file");
+                exit(1);
+            }
+            if ( (sentSoFar = write(filefd, "\n", 1)) == -1) {
+                perror("Error with writing to log_file");
+                exit(1);
+            }
+            current = current->next;
+        }
+
+        // 2nd write total requests
+        char* info = "TOTAL TRAVEL REQUESTS ";
+        char* numberString = malloc((strlen(info) + LENGTH)*sizeof(char));
+        sprintf(numberString, "%s%d\n", info, (*accepted + *rejected));
+        if ( (sentSoFar = write(filefd, numberString, strlen(numberString))) == -1) {
+            perror("Error with writing to log_file");
+            exit(1);
+        }
+
+        // 3rd write accepted
+        info = "ACCEPTED ";
+        numberString = realloc(numberString, (strlen(info) + LENGTH)*(sizeof(char)) );
+        sprintf(numberString, "%s%d\n", info, (*accepted));
+        if ( (sentSoFar = write(filefd, numberString, strlen(numberString))) == -1) {
+            perror("Error with writing to log_file");
+            exit(1);
+        }
+
+        // 4th write accepted
+        info = "REJECTED ";
+        numberString = realloc(numberString, (strlen(info) + LENGTH)*(sizeof(char)) );
+        sprintf(numberString, "%s%d\n", info, (*rejected));
+        if ( (sentSoFar = write(filefd, numberString, strlen(numberString))) == -1) {
+            perror("Error with writing to log_file");
+            exit(1);
+        }
+
+        free(numberString);
+        // Reset flags
+        flagQuit = 0;
+        flagInt = 0;
+    }
 }
 
 void checkSigQuit (State** stateHead, Record** recordsHead, BloomFilter** bloomsHead, SkipList** skipVaccHead, SkipList** skipNonVaccHead, MonitorDir* monitorDir, char* dir_path) {
@@ -504,12 +575,7 @@ void analyseMessage (MonitorDir** monitorDir, Message* message, int outfd, int* 
 
         // Check in structures
         char* answer = processTravelRequest(*skipVaccHead, citizenID, virus, date);
-        if (!strcmp(answer, "YES")) {
-            (*accepted)++;
-        }
-        else if (!strcmp(answer, "NO") || !strcmp(answer, "BUT")) {
-            (*rejected)++;
-        }
+
         // Answer to Parent, also pass 'countryTo'
         char* fullString = malloc((strlen(countryTo) + 1 + strlen(answer) + 1)*sizeof(char));
         strcpy(fullString, countryTo);
@@ -523,11 +589,9 @@ void analyseMessage (MonitorDir** monitorDir, Message* message, int outfd, int* 
         // pritnf("Why don't i get it?\n");
         if (!strcmp(message->body, "YES")) {
             (*accepted)++;
-            printf("Incremented accepteds\n");
         }
         else if (!strcmp(message->body, "NO") || !strcmp(message->body, "BUT")) {
             (*rejected)++;
-            printf("Incremented accepteds\n");
         }
     }
     // free(message->code);
@@ -564,7 +628,6 @@ void analyseChildMessage(Message* message, ChildMonitor* childMonitor, int numMo
     }
     // Message 't': Monitor answers travelRequest query
     if (message->code[0] == 't') {
-        printf("Hello from parent after 't' %d - %s\n", (int)getpid(), message->body);
         char* countryTo;
         char* answer;
 
@@ -615,6 +678,22 @@ int getUserCommand(int* readyMonitors, int numMonitors, ChildMonitor* childMonit
     // Get the command
     command = strtok(input, " ");
     if (!strcmp(command, "/exit")) {
+
+        printf("parent:\naccepted: %d\nrejected: %d\n", (*accepted), (*rejected));
+
+
+        // Send SIGKILL signal to every child
+        for (int i = 0; i < numMonitors; ++i) {
+            printf("SIGKILL sent to child\n");
+            kill(childMonitor[i].pid, SIGKILL);
+        }
+
+        // Wait till every child finishes
+        for (int i = 0; i < numMonitors; ++i) {
+            waitpid(-1, NULL, 0);
+            printf("Child listened SIGKILL, terminated\n");
+
+        }
         free(input);
         free(dir_path);
         closedir(input_dir);
@@ -625,11 +704,7 @@ int getUserCommand(int* readyMonitors, int numMonitors, ChildMonitor* childMonit
             free(childMonitor[i].country);
         }
         freeBlooms(bloomsHead);
-        // Send SIGQUIT signal to childs
-        for (int i = 0; i < numMonitors; ++i) {
-            printf("SIGKILL sent to childs\n");
-            kill(outfd[i], SIGKILL);
-        }
+
      
         return 1;
     }

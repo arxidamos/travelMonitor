@@ -5,7 +5,7 @@ SOURCE = main.c mainFunctions.c stateList.c recordList.c bloomFilter.c skipList.
 HEADER = structs.h functions.h
 OUT = travelMonitor
 TEMP_OUT = child
-TEMP_DIRS = ./named_pipes
+TEMP_DIRS = ./named_pipes ./log_files
 CC = gcc
 FLAGS = -g3 -c -Wall
 

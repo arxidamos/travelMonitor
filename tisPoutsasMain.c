@@ -70,6 +70,9 @@ int main(int argc, char* argv[]) {
     free(firstMessage);
 
     while (1) {
+        // Keep checking signal flags
+        checkSignalFlags(&monitorDir, &accepted, &rejected);
+
         // Get incoming messages
         Message* incMessage = malloc(sizeof(Message));
         // getMessage(incMessage, incfd, bufSize);
@@ -93,6 +96,6 @@ int main(int argc, char* argv[]) {
 
         // Signal handler for SIGINT and SIGQUIT
         // checkSigQuit(&stateHead, &recordsHead, &bloomsHead, &skipVaccHead, &skipNonVaccHead, monitorDir, dir_path);
-        
+
     }
 }

@@ -29,7 +29,15 @@ void travelRequest (int* readyMonitors, BloomFilter* head, ChildMonitor* childMo
                 if ((current->bitArray[x/32] & set) == 0) {
                     printf("REQUEST REJECTED - YOU ARE NOT VACCINATED\n");
                     (*rejected)++;
-                    return;
+                    // Send increment counter message
+                    for (int x=0; x<numMonitors; x++) {
+                        for (int y=0; y<childMonitor[x].countryCount; y++) {
+                            if ( !strcmp(childMonitor[x].country[y], countryTo) ) {
+                                sendBytes('+', "NO", outfd[x], bufSize);
+                                return;
+                            }
+                        }
+                    }
                 }
                 set = 1;
             }

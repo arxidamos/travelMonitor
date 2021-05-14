@@ -58,12 +58,18 @@ int main(int argc, char **argv) {
 	}
 
     // Create a diretory for the named pipes
-    char* fifoPath = "./named_pipes";
-    if (mkdir(fifoPath, 0777) == -1) {
+    // char* fifoPath = "./named_pipes";
+    if (mkdir("./named_pipes", RWE) == -1) {
         perror("Error creating named_pipes directory");
         exit(1);
     }
-    
+
+    // Create a diretory for the log file
+    if (mkdir("./log_files", RWE) == -1) {
+        perror("Error creating log_files directory");
+        exit(1);
+    }
+
     // Store the child processes' pids
     pid_t childpids[numMonitors];
     // Parent process' fds for read and write
