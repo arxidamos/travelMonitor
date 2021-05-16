@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
 #include <fcntl.h>
 #include <limits.h>
 #include <signal.h>
@@ -110,6 +111,89 @@ void sendBytes (char code, char* body, int fd, int bufSize) {
     }
     free(msg);
     return;
+}
+
+// Replace terminated child
+void replaceChild (pid_t pid, char* dir_path, int bufSize, int bloomSize, int numMonitors, int* readfd, int* writefd, ChildMonitor* childMonitor) {
+    // Find the terminated child in parent's structure
+    int i=0;
+    for (i=0; i<numMonitors; i++) {
+        if (pid == childMonitor[i].pid) {
+            break;
+        }
+    }
+
+    // Close reading & writing fds for child
+    if ( close(readfd[i]) == -1 ) {
+        perror("Error closing named pipe for reading");
+        exit(1);
+    }
+    if ( close(writefd[i]) == -1 ) {
+        perror("Error closing named pipe for writing");
+        exit(1);
+    }
+
+    // Name reading & writing named pipes for read and write
+    char pipeParentReads[25];
+    char pipeParentWrites[25];
+    sprintf(pipeParentReads, "./named_pipes/readPipe%d", i);
+    sprintf(pipeParentWrites, "./named_pipes/writePipe%d", i);
+
+    // Remove reading & writing named pipes for child
+    if ( unlink(pipeParentReads) == -1 ) {
+        perror("Error deleting named pipe for reading");
+        exit(1);
+    }
+    if ( unlink(pipeParentWrites) == -1 ) {
+        perror("Error deleting named pipe for writing");
+        exit(1);
+    }
+
+    // Create reading & writing named pipes for read and write
+    if (mkfifo(pipeParentReads, RW) == -1) {
+        perror("Error creating named pipe");
+        exit(1);
+    }
+    if (mkfifo(pipeParentWrites, RW) == -1) {
+        perror("Error creating named pipe");
+        exit(1);
+    }
+
+    // Create new child process
+    if ((pid = fork()) == -1) {
+        perror("Error with fork");
+        exit(1);
+    }
+    // Child executes "child" program
+    if (pid == 0) {
+        execl("./child", "child", pipeParentReads, pipeParentWrites, dir_path, NULL);
+        perror("Error with execl");
+    }
+    // Open reading & writing named pipes for child
+    if ((readfd[i] = open(pipeParentReads, O_RDONLY)) == -1) {
+        perror("Error opening named pipe for reading");
+        exit(1);
+    }
+    if ((writefd[i] = open(pipeParentWrites, O_WRONLY)) == -1) {
+        perror("Error opening named pipe for writing");
+        exit(1);
+    }
+
+    // Update pid in parent's structure
+    childMonitor[i].pid = pid;
+
+    // Convert bufSize and bloomSize to strings
+    char bufSizeString[15];
+    sprintf(bufSizeString, "%d", bufSize);
+    char bloomSizeString[15];
+    sprintf(bloomSizeString, "%d", bloomSize);
+    // Send bufSize and bloomSize as first two messages
+    sendBytes ('1', bufSizeString, writefd[i], bufSize);
+    sendBytes ('2', bloomSizeString, writefd[i], bufSize);
+    
+    // Assign the same countries to new Monitor
+    resendCountryDirs(dir_path, numMonitors, writefd[i], childMonitor[i], bufSize);
+
 }
 
 // Send previous Monitor's countries to new Monitor

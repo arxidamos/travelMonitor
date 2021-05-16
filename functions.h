@@ -59,10 +59,9 @@ Date getTime ();
 int compareSixMonths (Date a, Date b);
 
 //
+void replaceChild (pid_t pid, char* dir_path, int bufSize, int bloomSize, int numMonitors, int* readfd, int* writefd, ChildMonitor* childMonitor);
 void sigUsr1HandlerParent (int sigNum);
-// int checkSignalFlagsParent (int* readyMonitors);
 int checkSignalFlagsParent (char* dir_path, int bufSize, int bloomSize, int* readyMonitors, int numMonitors, int* readfd, int* writefd, ChildMonitor* childMonitor);
-// int checkSignalFlagsParent (int* readyMonitors, int numMonitors, int* incfd, int* outfd, char pipeParentReads[], char pipeParentWrites[], ChildMonitor* childMonitor);
 void handleSignalsParent (void);
 void checkChildFlags(int* readyMonitors);
 void sigchldHandler();

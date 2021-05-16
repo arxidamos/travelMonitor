@@ -106,7 +106,7 @@ int main(int argc, char **argv) {
             execl("./child", "child", pipeParentReads, pipeParentWrites, dir_path, NULL);
             perror("Error with execl");
         }
-        // Open reading & writing named pipes for each child process
+        // Open reading & writing fds for each child process
         if ((readfd[i] = open(pipeParentReads, O_RDONLY)) == -1) {
             perror("Error opening named pipe for reading");
             exit(1);
