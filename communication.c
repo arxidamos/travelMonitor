@@ -112,6 +112,17 @@ void sendBytes (char code, char* body, int fd, int bufSize) {
     return;
 }
 
+// Send previous Monitor's countries to new Monitor
+void resendCountryDirs (char* dir_path, int numMonitors, int outfd, ChildMonitor childMonitor, int bufSize) {
+    for (int i=0; i<childMonitor.countryCount; i++) {
+        sendBytes('C', childMonitor.country[i], outfd, bufSize);
+        printf("Sent country DIrs to new monitor\n");
+    }
+    // When mapping ready, send 'F' message
+    sendBytes('F', "", outfd, bufSize);
+    printf("Sent F message to new monitor\n");
+}
+
 // Map countries to Monitors, round robin
 void mapCountryDirs (char* dir_path, int numMonitors, int outfd[], ChildMonitor childMonitor[], int bufSize) {
     struct dirent** directory;
@@ -179,8 +190,6 @@ void processUsr1(MonitorDir** monitorDir, int outfd, int bufSize, int bloomSize,
 
                 // File is not included in struct's files
                 if ( !(fileInDir(current, file)) ) {
-                    printf("This file is new %s\n", file);
-
                     // Add file to MonitorDir struct
                     insertFile(&current, file);
 
@@ -325,9 +334,6 @@ void processUsr1(MonitorDir** monitorDir, int outfd, int bufSize, int bloomSize,
                             }
                         }
                     }
-                    printf("==========\n");
-                    vaccineStatusBloom((*bloomsHead), "1255", "T-lymphotropic");
-                    printf("==========\n");
 
                     // Send signal to Parent to make him anticipate message
                     if (kill(getppid(), SIGUSR1) == -1) {
@@ -338,35 +344,13 @@ void processUsr1(MonitorDir** monitorDir, int outfd, int bufSize, int bloomSize,
                     updateParentBlooms(*bloomsHead, outfd, bufSize);
                     // Report setup finished to Parent
                     sendBytes('F', "", outfd, bufSize);
-                    printf("Sent 'f' message ston parent sto telos tis processUsr1()\n");
-
+                    // printf("Sent 'f' message ston parent sto telos tis processUsr1()\n");
                 }
             }
         }
-
         free(currentPath);
-        // int fileCount;
-            // // Scan directory in alphabetical order
-            // fileCount = scandir(current->dir, &directory, NULL, alphasort);
-            
-            // for (int i=0; i<fileCount; i++) {
-            //     char* dirName = directory[i]->d_name;
-            //     char* files[filesCount];
-            //     int i = 0;
-            //     while ( (current = readdir(dir)) ) {
-            //         if ( strcmp(current->d_name, ".") && strcmp(current->d_name, "..") ) {
-            //             files[i] = malloc(strlen(message->body) + 1 + strlen(current->d_name) + 1);
-            //             strcpy(files[i], message->body);
-            //             strcat(files[i], "/");
-            //             strcat(files[i], current->d_name);
-            //             i++;
-            //         }
-            //     }
-
-        // }
         current = current->next;
     }
-
 }
 
 // void checkSigQuit (State** stateHead, Record** recordsHead, BloomFilter** bloomsHead, SkipList** skipVaccHead, SkipList** skipNonVaccHead, MonitorDir* monitorDir, char* dir_path) {
@@ -417,7 +401,6 @@ void analyseMessage (MonitorDir** monitorDir, Message* message, int outfd, int* 
         rewinddir(dir);
 
         // Get the file names
-        // char* files[filesCount];
         char** files = malloc(sizeof(char*)*filesCount);
         int i = 0;
         while ( (current = readdir(dir)) ) {
@@ -732,7 +715,7 @@ void analyseChildMessage(Message* message, ChildMonitor* childMonitor, int numMo
 
 // Receive commands from user
 int getUserCommand(int* readyMonitors, int numMonitors, ChildMonitor* childMonitor, BloomFilter* bloomsHead,
- char* dir_path, DIR* input_dir, int* incfd, int* outfd, int bufSize, int* accepted, int* rejected) {
+ char* dir_path, DIR* input_dir, int* incfd, int* outfd, int bufSize, int bloomSize, int* accepted, int* rejected) {
     // size_t inputSize;
     // char* input = NULL;
     char* command = NULL;
@@ -741,26 +724,12 @@ int getUserCommand(int* readyMonitors, int numMonitors, ChildMonitor* childMonit
     char input[size];
 
 
-    // if (getline(&input, &inputSize, stdin) < 0) {
-    //     printf("THIS IS A < 0 LINE\n");
-    //     if (checkSignalFlagsParent(readyMonitors) == 1) {
-    //         sleep(1);
-    //         // while ((getchar()) != '\n');
-    //         fflush(stdin);
-    //         return -1;
-    //     }
-    // }
-
     // Get user commands
     if ( (fgets(input, size, stdin) == NULL) ) {
         // Check if some signal's flag is on
-        checkSignalFlagsParent(readyMonitors);
+        checkSignalFlagsParent(dir_path, bufSize, bloomSize, readyMonitors, numMonitors, incfd, outfd, childMonitor);
         return -1;
     }
-
-
-
-    // getline(&input, &inputSize, stdin);
 
     input[strlen(input)-1] = '\0'; // Cut terminating '\n' from string
     
@@ -773,7 +742,6 @@ int getUserCommand(int* readyMonitors, int numMonitors, ChildMonitor* childMonit
     if (!strcmp(command, "/exit")) {
 
         printf("parent:\naccepted: %d\nrejected: %d\n", (*accepted), (*rejected));
-
 
         // Send SIGKILL signal to every child
         for (int i = 0; i < numMonitors; ++i) {

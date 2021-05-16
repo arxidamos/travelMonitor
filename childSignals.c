@@ -16,26 +16,30 @@ static volatile sig_atomic_t flagQuit = 0;
 static volatile sig_atomic_t flagInt = 0;
 static volatile sig_atomic_t flagUsr1 = 0;
 
+// Set INT flag
 void sigIntHandler (int sigNum) {
     printf("Caught a SIGINT\n");
     flagInt = 1;
 }
 
+// Set QUIT flag
 void sigQuitHandler (int sigNum) {
     printf("Caught a SIGQUIT\n");
     flagQuit = 1;
 }
 
+// Set USR1 flag
 void sigUsr1Handler (int sigNum) {
     printf("Caught a SIGUSR1\n");
     flagUsr1 = 1;
 }
 
+// Check if signal flags set
 void checkSignalFlags (MonitorDir** monitorDir, int outfd, int bufSize, int bloomSize, char* dir_path, BloomFilter** bloomsHead, State** stateHead, Record** recordsHead, SkipList** skipVaccHead, SkipList** skipNonVaccHead, int* accepted, int* rejected) {
     if (flagQuit == 1 || flagInt == 1) {
-        // Write to "log_file.pid"
-        printf("TOTAL TRAVEL REQUESTS %d\n", (*accepted + *rejected));
-        printf("ACCEPTED %d\nREJECTED %d\n", (*accepted), (*rejected));
+        // Print to "log_file.pid"
+        // printf("TOTAL TRAVEL REQUESTS %d\n", (*accepted + *rejected));
+        // printf("ACCEPTED %d\nREJECTED %d\n", (*accepted), (*rejected));
 
         // Create file's name, inside "log_files" dir
         char* dirName = "log_files/";
@@ -51,69 +55,62 @@ void checkSignalFlags (MonitorDir** monitorDir, int outfd, int bufSize, int bloo
         }
         free(fullName);
 
-        int sentSoFar = 0;
-        // 1st write this Monitor's countries
+        // 1st print: this Monitor's countries
         MonitorDir* current = (*monitorDir);
         while (current) {
-            // Keep writing to file till all countries written
-            if ( (sentSoFar = write(filefd, current->country, strlen(current->country))) == -1) {
+            // Keep printing to file till all countries written
+            if ( (write(filefd, current->country, strlen(current->country)) == -1) ) {
                 perror("Error with writing to log_file");
                 exit(1);
             }
-            if ( (sentSoFar = write(filefd, "\n", 1)) == -1) {
+            if ( (write(filefd, "\n", 1) == -1) ) {
                 perror("Error with writing to log_file");
                 exit(1);
             }
             current = current->next;
         }
 
-        // 2nd write total requests
+        // 2nd print: total requests
         char* info = "TOTAL TRAVEL REQUESTS ";
         char* numberString = malloc((strlen(info) + LENGTH)*sizeof(char));
         sprintf(numberString, "%s%d\n", info, (*accepted + *rejected));
-        if ( (sentSoFar = write(filefd, numberString, strlen(numberString))) == -1) {
+        if ( (write(filefd, numberString, strlen(numberString)) == -1) ) {
             perror("Error with writing to log_file");
             exit(1);
         }
 
-        // 3rd write accepted
+        // 3rd print: accepted requests
         info = "ACCEPTED ";
         numberString = realloc(numberString, (strlen(info) + LENGTH)*(sizeof(char)) );
         sprintf(numberString, "%s%d\n", info, (*accepted));
-        if ( (sentSoFar = write(filefd, numberString, strlen(numberString))) == -1) {
+        if ( (write(filefd, numberString, strlen(numberString)) == -1) ) {
             perror("Error with writing to log_file");
             exit(1);
         }
 
-        // 4th write accepted
+        // 4th print: rejected requests
         info = "REJECTED ";
         numberString = realloc(numberString, (strlen(info) + LENGTH)*(sizeof(char)) );
         sprintf(numberString, "%s%d\n", info, (*rejected));
-        if ( (sentSoFar = write(filefd, numberString, strlen(numberString))) == -1) {
+        if ( write(filefd, numberString, strlen(numberString)) == -1 ) {
             perror("Error with writing to log_file");
             exit(1);
         }
-
         free(numberString);
         
         // Reset flags
         flagQuit = 0;
         flagInt = 0;
     }
-
     if (flagUsr1 == 1) {
         // Check directories for new file(s)
-        
         processUsr1(monitorDir, outfd, bufSize, bloomSize, dir_path, bloomsHead, stateHead, recordsHead, skipVaccHead, skipNonVaccHead);
-        // sendBytes('-', "", outfd, bufSize);
-        printf("Finished actions deriving from SIGUSR1\n");
-        // printMonitorDirList(*monitorDir);
-
         // Reset flag
         flagUsr1 = 0;
     }
 }
 
+// Instal signal handlers
 void handleSignals (void) {
     // struct sigaction sigAct;
         // // Signal set

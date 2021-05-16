@@ -60,7 +60,9 @@ int compareSixMonths (Date a, Date b);
 
 //
 void sigUsr1HandlerParent (int sigNum);
-int checkSignalFlagsParent (int* readyMonitors);
+// int checkSignalFlagsParent (int* readyMonitors);
+int checkSignalFlagsParent (char* dir_path, int bufSize, int bloomSize, int* readyMonitors, int numMonitors, int* readfd, int* writefd, ChildMonitor* childMonitor);
+// int checkSignalFlagsParent (int* readyMonitors, int numMonitors, int* incfd, int* outfd, char pipeParentReads[], char pipeParentWrites[], ChildMonitor* childMonitor);
 void handleSignalsParent (void);
 void checkChildFlags(int* readyMonitors);
 void sigchldHandler();
@@ -75,10 +77,11 @@ void analyseMessage (MonitorDir** monitorDir, Message* message, int outfd, int* 
 int getMessage (Message* incMessage, int incfd, int bufSize);
 char* readBytes(char* msg, int length, int fd, int bufSize);
 void sendBytes (char code, char* body, int fd, int bufSize);
+void resendCountryDirs (char* dir_path, int numMonitors, int outfd, ChildMonitor childMonitor, int bufSize);
 void mapCountryDirs (char* dir_path, int numMonitors, int outfd[], ChildMonitor childMonitor[], int bufSize);
 int compare (const void * a, const void * b);
 int getUserCommand(int* readyMonitors, int numMonitors, ChildMonitor* childMonitor, BloomFilter* bloomsHead,
-char* dir_path, DIR* input_dir, int* incfd, int* outfd, int bufSize, int* accepted, int* rejected);
+char* dir_path, DIR* input_dir, int* incfd, int* outfd, int bufSize, int bloomSize, int* accepted, int* rejected);
 
 
 void updateParentBlooms(BloomFilter* bloomsHead, int outfd, int bufSize);

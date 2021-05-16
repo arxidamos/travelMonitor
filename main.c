@@ -60,20 +60,19 @@ int main(int argc, char **argv) {
         }        
 	}
 
-    // Create a diretory for the named pipes
-    // char* fifoPath = "./named_pipes";
+    // Create directory for the named pipes
     if (mkdir("./named_pipes", RWE) == -1) {
         perror("Error creating named_pipes directory");
         exit(1);
     }
 
-    // Create a diretory for the log file
+    // Create directory for the log file
     if (mkdir("./log_files", RWE) == -1) {
         perror("Error creating log_files directory");
         exit(1);
     }
 
-    // Store the child processes' pids
+    // Child processes' pids
     pid_t childpids[numMonitors];
     // Parent process' fds for read and write
     int readfd[numMonitors];
@@ -83,21 +82,17 @@ int main(int argc, char **argv) {
     char pipeParentWrites[25];
     // Store pids with respective country dirs
     ChildMonitor childMonitor[numMonitors];
-    // Signal handler for when a child process exits // Handle SIGCHLDs
-    sigchldHandler();
 
     // Create named pipes and child processes
     for (int i=0; i<numMonitors; i++) {
-        // Name them
+        // Name and create named pipes for read and write
         sprintf(pipeParentReads, "./named_pipes/readPipe%d", i);
         sprintf(pipeParentWrites, "./named_pipes/writePipe%d", i);
-        
-        // Create named pipes for read and write
-        if (mkfifo(pipeParentReads, 0666) == -1) {
+        if (mkfifo(pipeParentReads, RW) == -1) {
             perror("Error creating named pipe");
             exit(1);
         }
-        if (mkfifo(pipeParentWrites, 0666) == -1) {
+        if (mkfifo(pipeParentWrites, RW) == -1) {
             perror("Error creating named pipe");
             exit(1);
         }
@@ -106,11 +101,12 @@ int main(int argc, char **argv) {
             perror("Error with fork");
             exit(1);
         }
+        // Child executes "child" program
         if (childpids[i] == 0) {
             execl("./child", "child", pipeParentReads, pipeParentWrites, dir_path, NULL);
             perror("Error with execl");
         }
-        // Open reading fifo for each child process
+        // Open reading & writing named pipes for each child process
         if ((readfd[i] = open(pipeParentReads, O_RDONLY)) == -1) {
             perror("Error opening named pipe for reading");
             exit(1);
@@ -122,8 +118,16 @@ int main(int argc, char **argv) {
         // Store pids with respective country dirs
         childMonitor[i].pid = childpids[i];
         childMonitor[i].countryCount = 0;
-        // printf ("Parent with ID: %lu and child ID: %lu.\n", (long)getpid(), (long)childpids[i]);
     }
+
+    // Var to monitor if child is about to send message
+    int readyMonitors = 0;
+    // Vars for stats
+    int accepted =0;
+    int rejected = 0;
+
+    // Signal handler for when a child process exits
+    sigchldHandler();
 
     // Convert bufSize and bloomSize to strings
     char bufSizeString[15];
@@ -136,7 +140,7 @@ int main(int argc, char **argv) {
         sendBytes ('2', bloomSizeString, writefd[i], bufferSize);
     }
     
-    // Assign countires to each Monitor, round-robin
+    // Assign countries to each Monitor, round-robin
     mapCountryDirs(dir_path, numMonitors, writefd, childMonitor, bufferSize);
     for (int i=0; i<numMonitors; i++) {
         printf("Monitor %d with countries:", i);
@@ -148,9 +152,6 @@ int main(int argc, char **argv) {
     
     // Initialise variables for structures
     BloomFilter* bloomsHead = NULL;
-    int readyMonitors = 0;
-    int accepted =0;
-    int rejected = 0;
 
     fd_set incfds;
     
@@ -204,7 +205,7 @@ int main(int argc, char **argv) {
             
             printf("Type a command:\n");
 
-            int userCommand = getUserCommand(&readyMonitors, numMonitors, childMonitor, bloomsHead, dir_path, input_dir, readfd, writefd, bufferSize, &accepted, &rejected);
+            int userCommand = getUserCommand(&readyMonitors, numMonitors, childMonitor, bloomsHead, dir_path, input_dir, readfd, writefd, bufferSize, bloomSize, &accepted, &rejected);
             // Command is NULL
             if (userCommand == -1) {
                 fflush(stdin);
