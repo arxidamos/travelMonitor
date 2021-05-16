@@ -12,8 +12,6 @@
 #include "functions.h"
 #include "structs.h"
 
-static volatile sig_atomic_t flagQuit = 0;
-static volatile sig_atomic_t flagInt = 0;
 // static sigset_t signalSet;
 
 // Read incoming message
@@ -118,7 +116,7 @@ void sendBytes (char code, char* body, int fd, int bufSize) {
 void mapCountryDirs (char* dir_path, int numMonitors, int outfd[], ChildMonitor childMonitor[], int bufSize) {
     struct dirent** directory;
     int fileCount;
-    // Scan directory in an alphabetical order
+    // Scan directory in alphabetical order
     fileCount = scandir(dir_path, &directory, NULL, alphasort);
     
     // Send each directory to the right Monitor, round robin
@@ -157,168 +155,236 @@ void mapCountryDirs (char* dir_path, int numMonitors, int outfd[], ChildMonitor 
     printf("FINISHED MAPPING COUNTRIES\n");
 }
 
-void sigchldHandler () {
-    int status;
-    pid_t pid;
-    while (1) {
-    // -1: wait any child to end, NULL: ignore child's return status, WNOHANG: don't suspend caller
-        pid = waitpid(-1, &status, WNOHANG);
-        if (pid == 0) {
-            return;
+void processUsr1(MonitorDir** monitorDir, int outfd, int bufSize, int bloomSize, char* dir_path, BloomFilter** bloomsHead, State** stateHead, Record** recordsHead, SkipList** skipVaccHead, SkipList** skipNonVaccHead) {
+    // Iterate through both MonitorDir's directories and the actual directories    
+    MonitorDir* current = (*monitorDir);
+    while(current) {
+        // Get each dir's files alphabetically
+        struct dirent** directory;
+        int filesCount = 0;
+        char* currentPath = malloc( (strlen(dir_path) + 1 + strlen(current->country) + 1)*sizeof(char) );
+        strcpy(currentPath, dir_path);
+        strcat(currentPath, "/");
+        strcat(currentPath, current->country);
+        filesCount = scandir(currentPath , &directory, NULL, alphasort);
+        
+        // Iterate through files
+        for (int i=0; i<filesCount; i++) {
+            if ( strcmp(directory[i]->d_name, ".") && strcmp(directory[i]->d_name, "..") ) {
+                // Adjust file name to compare with struct's files
+                char* file = malloc( (strlen(current->country) + 1 + strlen(directory[i]->d_name) + 1)*sizeof(char) );
+                strcpy(file, current->country);
+                strcat(file, "/");
+                strcat(file, directory[i]->d_name);
+
+                // File is not included in struct's files
+                if ( !(fileInDir(current, file)) ) {
+                    printf("This file is new %s\n", file);
+
+                    // Add file to MonitorDir struct
+                    insertFile(&current, file);
+
+                    // Add file contents to Monitor's data
+                    FILE* inputFile;
+                    size_t textSize;
+                    char* text = NULL;
+                    char* token = NULL;
+                    char* citizenID;
+                    char* fName;
+                    char* lName;
+                    char* country;
+                    int age;
+                    char* virus;
+                    Date vaccDate;
+                    State* state;
+                    Record* record;
+                    int k =16;
+                    
+                    // Open this file
+                    char* currentFile = malloc(strlen(dir_path) + strlen(file)+1);
+                    strcpy(currentFile, dir_path);
+                    strcat(currentFile, file);
+                    inputFile = fopen(currentFile, "r");
+                    if(inputFile == NULL) {
+                        fprintf(stderr, "Cannot open file: %s\n", currentFile);
+                        exit(1);
+                    }
+                    // Read from file and add to structs
+                    while (getline(&text, &textSize, inputFile) != -1) {
+                        // Record to be inserted in structs, unless faulty
+                        // Get citizenID
+                        token = strtok(text, " ");
+                        citizenID = malloc(strlen(token)+1);
+                        strcpy(citizenID, token);
+
+                        // Get firstName
+                        token = strtok(NULL, " ");
+                        fName = malloc(strlen(token)+1);
+                        strcpy(fName, token);
+
+                        // Get lastName
+                        token = strtok(NULL, " ");
+                        lName = malloc(strlen(token)+1);
+                        strcpy(lName, token);
+
+                        // Get country
+                        token = strtok(NULL, " ");
+                        country = malloc(strlen(token)+1);
+                        strcpy(country, token);
+
+                        // Get age
+                        token = strtok(NULL, " ");
+                        sscanf(token, "%d", &age);
+
+                        // Get virus
+                        token = strtok(NULL, " ");
+                        virus = malloc(strlen(token)+1);
+                        strcpy(virus, token);
+
+                        // Check if YES/NO
+                        token = strtok(NULL, " ");
+
+                        // Get vaccine date, if YES
+                        if(!strcmp("YES", token)){
+                            token = strtok(NULL, " ");
+                            sscanf(token, "%d-%d-%d", &vaccDate.day, &vaccDate.month, &vaccDate.year);
+                        }
+                        else {
+                            // If NO, then record should have no date
+                            if ( (token = strtok(NULL, " ")) ) {
+                                printf("ERROR IN RECORD %s %s %s %s %d %s - Has 'NO' with date %s", citizenID, fName, lName, country, age, virus, token);
+                                // recordAccepted = 0;
+                            }
+                            else {
+                                vaccDate.day=0;
+                                vaccDate.month=0;
+                                vaccDate.year=0;
+                            }
+                        }
+                        int check = insertCitizenCheck((*recordsHead), citizenID, fName, lName, country, age, virus);
+                        // Check if new record is inconsistent
+                        if (check == 1) {
+                            printf("CitizenID %s already in use for another record. Please enter a different one.\n", citizenID);
+                        }
+                        // New record is consistent
+                        else {
+                            SkipList* vList;
+                            SkipList* nonVList;
+                            SkipNode* node;
+
+                            // Add country in State linked list
+                            state = stateExists((*stateHead), country);
+                            if (!state) {
+                                state = insertState(stateHead, country);
+                            }
+
+                            // Record already exists. Add new virus for record
+                            if (check == 2) {
+                                record = insertVirusOnly(recordsHead, citizenID, virus);
+                            }
+                            // Record is new. Add new record in record linked list
+                            else if (!check) {
+                                record = insertSortedRecord(recordsHead, citizenID, fName, lName, state, age, virus);
+                            }
+
+                            // Vaccinated Skip List for this virus exists
+                            if ( (vList = virusSkipExists((*skipVaccHead), virus)) ) {
+                                // CitizenID already vaccinated
+                                if ( (node = searchSkipList(vList, citizenID)) ) {
+                                    printf("ERROR: CITIZEN %s ALREADY VACCINATED ON %d-%d-%d\n", citizenID, node->vaccDate.day, node->vaccDate.month, node->vaccDate.year);
+                                }
+                                // CitizenID not yet vaccinated
+                                else {
+                                    // Add record in Bloom Filter
+                                    insertInBloom((*bloomsHead), citizenID, virus);
+                                    // Add record in Skip List
+                                    insertInSkip((*skipVaccHead), record, virus, vaccDate);
+                                }
+                            }
+                            // Vaccinated Skip List for this virus doesn't exist
+                            else {
+                                // Create Skip List for this virus
+                                (*skipVaccHead) = createList((*skipVaccHead), virus);
+                                // Add record in Skip List
+                                insertInSkip((*skipVaccHead), record, virus, vaccDate);
+                            
+                                // Create Bloom Filter for this virus
+                                (*bloomsHead) = createBloom((*bloomsHead), virus, bloomSize, k);
+                                // Add record in Bloom Filter
+                                insertInBloom((*bloomsHead), citizenID, virus);
+                            }
+
+                            // Non vaccinated Skip List for this virus exists
+                            if ( (nonVList = virusSkipExists((*skipNonVaccHead), virus)) ) {
+                            
+                                // CitizenID in this Skip List exists
+                                if ( (node = searchSkipList(nonVList, citizenID)) ) {
+                                    // Remove node from non vaccinated Skip List
+                                    removeFromSkip (nonVList, node);
+                                }
+                            }
+                        }
+                    }
+                    printf("==========\n");
+                    vaccineStatusBloom((*bloomsHead), "1255", "T-lymphotropic");
+                    printf("==========\n");
+
+                    // Send signal to Parent to make him anticipate message
+                    if (kill(getppid(), SIGUSR1) == -1) {
+                        perror("Error with sending SIGUSR1 to parent");
+                        exit(1);
+                    }
+                    // Initialization finished, send Blooms to parent
+                    updateParentBlooms(*bloomsHead, outfd, bufSize);
+                    // Report setup finished to Parent
+                    sendBytes('F', "", outfd, bufSize);
+                    printf("Sent 'f' message ston parent sto telos tis processUsr1()\n");
+
+                }
+            }
         }
-        else if (pid == -1) {
-            return;
-        }
-        else {
-            printf("...reaching parent - %lu  with return code %d \n",(long)pid, status);
-        }
-    }
-}
 
-void sigQuitHandler (int sigNum) {
-    printf("Caught a SIGQUIT\n");
-    flagQuit = 1;
-}
+        free(currentPath);
+        // int fileCount;
+            // // Scan directory in alphabetical order
+            // fileCount = scandir(current->dir, &directory, NULL, alphasort);
+            
+            // for (int i=0; i<fileCount; i++) {
+            //     char* dirName = directory[i]->d_name;
+            //     char* files[filesCount];
+            //     int i = 0;
+            //     while ( (current = readdir(dir)) ) {
+            //         if ( strcmp(current->d_name, ".") && strcmp(current->d_name, "..") ) {
+            //             files[i] = malloc(strlen(message->body) + 1 + strlen(current->d_name) + 1);
+            //             strcpy(files[i], message->body);
+            //             strcat(files[i], "/");
+            //             strcat(files[i], current->d_name);
+            //             i++;
+            //         }
+            //     }
 
-void sigIntHandler (int sigNum) {
-    printf("Caught a SIGINT\n");
-    flagInt = 1;
-}
-
-void handleSignals(void) {
-    // struct sigaction sigAct;
-        // // Signal set
-        // sigset_t set;
-        // sigfillset(&set);
-
-        // // Block all signals (that are present in set)
-        // if (sigprocmask(SIG_SETMASK, &set, NULL) == -1) {
-        //     perror("Error with setting signal mask");
         // }
-        // memset(&sigAct, 0, sizeof(struct sigaction));
-        // // Initialise flags
-        // flagQuit = 0;
-
-        // sigAct.sa_handler = sigQuitHandler;
-        // sigaction(SIGQUIT, &sigAct, NULL);
-
-        // // // Add only certain signals in signalSet, will need them (to block when receiving commands)
-        // // sigemptyset(&signalSet);
-        // // sigaddset(&signalSet, SIGINT);
-        // // sigaddset(&signalSet, SIGQUIT);
-        // // sigaddset(&signalSet, SIGUSR1);
-
-        // // Unblock all signals
-        // sigemptyset(&set);
-        // if (sigprocmask(SIG_SETMASK, &set, NULL) == -1) {
-        //     perror("Error with setting signal mask");
-    // }
-
-    static struct sigaction sigAct;
-
-    sigfillset(&sigAct.sa_mask);
-    sigAct.sa_handler = sigIntHandler;
-    sigaction(SIGINT, &sigAct, NULL);
-    
-    sigAct.sa_handler = sigQuitHandler;
-    sigaction(SIGQUIT, &sigAct, NULL);
-    
-    // sigAct.sa_handler = sigChldHandler;
-    // sigaction(SIGCHLD, &sigAct, NULL);
-    
-    // sigAct.sa_handler = sigUsr2Handler;
-    // sigaction(SIGUSR2, &sigAct, NULL);
-
-
-}
-
-void checkSignalFlags(MonitorDir** monitorDir, int* accepted, int* rejected) {
-    if (flagQuit == 1 || flagInt == 1) {
-        // Write to "log_file.pid"
-        printf("TOTAL TRAVEL REQUESTS %d\n", (*accepted + *rejected));
-        printf("ACCEPTED %d\nREJECTED %d\n", (*accepted), (*rejected));
-
-        // Create file's name, inside "log_files" dir
-        char* dirName = "log_files/";
-        char* fileName = "log_file.";
-        char* fullName = malloc(sizeof(char)*(strlen(dirName) + strlen(fileName) + LENGTH + 1));
-        sprintf(fullName, "%s%s%d", dirName, fileName, (int)getpid());
-        printf("LOG FILE NAME: %s\n", fullName);
-
-        // Create file
-        int filefd;
-        if ( (filefd = creat(fullName, RWE)) == -1) {
-            perror("Error with creating log_file");
-            exit(1);
-        }
-        free(fullName);
-
-        int sentSoFar = 0;
-        // 1st write this Monitor's countries
-        MonitorDir* current = (*monitorDir);
-        while (current) {
-            // Keep writing to file till all countries written
-            if ( (sentSoFar = write(filefd, current->country, strlen(current->country))) == -1) {
-                perror("Error with writing to log_file");
-                exit(1);
-            }
-            if ( (sentSoFar = write(filefd, "\n", 1)) == -1) {
-                perror("Error with writing to log_file");
-                exit(1);
-            }
-            current = current->next;
-        }
-
-        // 2nd write total requests
-        char* info = "TOTAL TRAVEL REQUESTS ";
-        char* numberString = malloc((strlen(info) + LENGTH)*sizeof(char));
-        sprintf(numberString, "%s%d\n", info, (*accepted + *rejected));
-        if ( (sentSoFar = write(filefd, numberString, strlen(numberString))) == -1) {
-            perror("Error with writing to log_file");
-            exit(1);
-        }
-
-        // 3rd write accepted
-        info = "ACCEPTED ";
-        numberString = realloc(numberString, (strlen(info) + LENGTH)*(sizeof(char)) );
-        sprintf(numberString, "%s%d\n", info, (*accepted));
-        if ( (sentSoFar = write(filefd, numberString, strlen(numberString))) == -1) {
-            perror("Error with writing to log_file");
-            exit(1);
-        }
-
-        // 4th write accepted
-        info = "REJECTED ";
-        numberString = realloc(numberString, (strlen(info) + LENGTH)*(sizeof(char)) );
-        sprintf(numberString, "%s%d\n", info, (*rejected));
-        if ( (sentSoFar = write(filefd, numberString, strlen(numberString))) == -1) {
-            perror("Error with writing to log_file");
-            exit(1);
-        }
-
-        free(numberString);
-        // Reset flags
-        flagQuit = 0;
-        flagInt = 0;
+        current = current->next;
     }
+
 }
 
-void checkSigQuit (State** stateHead, Record** recordsHead, BloomFilter** bloomsHead, SkipList** skipVaccHead, SkipList** skipNonVaccHead, MonitorDir* monitorDir, char* dir_path) {
-    // Check for SIGQUIT
-    if (flagQuit) {
-        // Deallocate memory
-        free(dir_path);
-        freeMonitorDirList(monitorDir);
-        freeStateList(*stateHead);
-        freeRecordList(*recordsHead);
-        freeBlooms(*bloomsHead);
-        freeSkipLists(*skipVaccHead);
-        freeSkipLists(*skipNonVaccHead);
-        printf("exiting from child\n");
-        exit(1);
-    }
-    flagQuit = 0;
-}
+// void checkSigQuit (State** stateHead, Record** recordsHead, BloomFilter** bloomsHead, SkipList** skipVaccHead, SkipList** skipNonVaccHead, MonitorDir* monitorDir, char* dir_path) {
+    //     // Check for SIGQUIT
+    //     if (flagQuit) {
+    //         // Deallocate memory
+    //         free(dir_path);
+    //         freeMonitorDirList(monitorDir);
+    //         freeStateList(*stateHead);
+    //         freeRecordList(*recordsHead);
+    //         freeBlooms(*bloomsHead);
+    //         freeSkipLists(*skipVaccHead);
+    //         freeSkipLists(*skipNonVaccHead);
+    //         printf("exiting from child\n");
+    //         exit(1);
+    //     }
+    //     flagQuit = 0;
+// }
 
 // Compare two files (aux function for qsort)
 int compare (const void * a, const void * b) {
@@ -342,6 +408,7 @@ void analyseMessage (MonitorDir** monitorDir, Message* message, int outfd, int* 
         int filesCount = 0;
         struct dirent* current;
         while ( (current = readdir(dir)) ) {
+            // Count all files except for "." and ".."
             if ( strcmp(current->d_name, ".") && strcmp(current->d_name, "..") ) {
                 filesCount++;
             }
@@ -350,7 +417,8 @@ void analyseMessage (MonitorDir** monitorDir, Message* message, int outfd, int* 
         rewinddir(dir);
 
         // Get the file names
-        char* files[filesCount];
+        // char* files[filesCount];
+        char** files = malloc(sizeof(char*)*filesCount);
         int i = 0;
         while ( (current = readdir(dir)) ) {
             if ( strcmp(current->d_name, ".") && strcmp(current->d_name, "..") ) {
@@ -368,7 +436,7 @@ void analyseMessage (MonitorDir** monitorDir, Message* message, int outfd, int* 
 
         // Store all info in a structure
         *monitorDir = insertDir(monitorDir, dir, message->body, files, filesCount);
-
+        free(files);
         return;
     }
     // Message '1': Parent's 1st message with bufSize
@@ -381,7 +449,7 @@ void analyseMessage (MonitorDir** monitorDir, Message* message, int outfd, int* 
         *bloomSize = atoi(message->body);
         return;
     }
-    // Message 'F': Parent finishes assigning, expects Bloom Filters
+    // Message 'F': Parent finishes assigning. Create structures - send Bloom Filters. 
     else if (message->code[0] == 'F') {
         // Initialize variables
         FILE* inputFile;
@@ -397,7 +465,6 @@ void analyseMessage (MonitorDir** monitorDir, Message* message, int outfd, int* 
         Date vaccDate;
         State* state;
         Record* record;
-        // BloomFilter* bloomsHead = NULL;
         int k =16;
         int recordAccepted = 1;
         // Iterate through Monitor's directories and files
@@ -604,6 +671,7 @@ void analyseMessage (MonitorDir** monitorDir, Message* message, int outfd, int* 
 void analyseChildMessage(Message* message, ChildMonitor* childMonitor, int numMonitors, int *readyMonitors, int* outfd, int bufSize, BloomFilter** bloomsHead, int bloomSize, int* accepted, int* rejected) {
     // Message 'F': Monitor reports setup finished
     if (message->code[0] =='F') {
+        printf("PArent received f message\n");
         (*readyMonitors)++;
     }
     // Message 'B': Monitor sends Bloom Filter
@@ -624,7 +692,7 @@ void analyseChildMessage(Message* message, ChildMonitor* childMonitor, int numMo
         }
 
         // bloomsHead = createBloom(bloomsHead, incMessage->body, bloomSize, k);
-        // printf("bloom virus %s\n", incMessage->body);
+        // printf("Pira mes ston parent: bloom virus %s\n", message->body);
     }
     // Message 't': Monitor answers travelRequest query
     if (message->code[0] == 't') {
@@ -659,16 +727,41 @@ void analyseChildMessage(Message* message, ChildMonitor* childMonitor, int numMo
             }
         }
     }
+    
 }
 
 // Receive commands from user
 int getUserCommand(int* readyMonitors, int numMonitors, ChildMonitor* childMonitor, BloomFilter* bloomsHead,
  char* dir_path, DIR* input_dir, int* incfd, int* outfd, int bufSize, int* accepted, int* rejected) {
-    size_t inputSize;
-    char* input = NULL;
+    // size_t inputSize;
+    // char* input = NULL;
     char* command = NULL;
 
-    getline(&input, &inputSize, stdin);
+    int size = 512;
+    char input[size];
+
+
+    // if (getline(&input, &inputSize, stdin) < 0) {
+    //     printf("THIS IS A < 0 LINE\n");
+    //     if (checkSignalFlagsParent(readyMonitors) == 1) {
+    //         sleep(1);
+    //         // while ((getchar()) != '\n');
+    //         fflush(stdin);
+    //         return -1;
+    //     }
+    // }
+
+    // Get user commands
+    if ( (fgets(input, size, stdin) == NULL) ) {
+        // Check if some signal's flag is on
+        checkSignalFlagsParent(readyMonitors);
+        return -1;
+    }
+
+
+
+    // getline(&input, &inputSize, stdin);
+
     input[strlen(input)-1] = '\0'; // Cut terminating '\n' from string
     
     char* citizenID;
@@ -694,7 +787,7 @@ int getUserCommand(int* readyMonitors, int numMonitors, ChildMonitor* childMonit
             printf("Child listened SIGKILL, terminated\n");
 
         }
-        free(input);
+        // free(input);
         free(dir_path);
         closedir(input_dir);
         for (int i=0; i<numMonitors; i++) {
@@ -731,7 +824,7 @@ int getUserCommand(int* readyMonitors, int numMonitors, ChildMonitor* childMonit
         else {
             printf("Please enter a citizenID and a virus name\n");
         }
-        free(input);
+        // free(input);
     }
     else if (!strcmp(command, "/travelRequest")) {
         // Get citizenID
@@ -790,12 +883,12 @@ int getUserCommand(int* readyMonitors, int numMonitors, ChildMonitor* childMonit
         else {
             printf("Please enter the following parameters: citizenID date countryFrom countryTo virusName.\n");
         }
-        free(input);
+        // free(input);
     }
     else {
         printf("Command '%s' is unknown\n", command);
         printf("Please type a known command:\n");
-        free(input);
+        // free(input);
     }
     return 0;
 }

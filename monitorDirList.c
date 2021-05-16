@@ -43,6 +43,24 @@ MonitorDir* insertDir (MonitorDir** head, DIR* dir, char* country, char* files[]
     return *head;
 }
 
+// Check if some file is included in MonitorDIr
+int fileInDir (MonitorDir* monitorDir, char* newFile) {
+    for (int i=0; i<monitorDir->fileCount; i++) {
+        if ( (!strcmp(newFile, monitorDir->files[i])) ) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+// Add file to existing MonitorDir
+void insertFile (MonitorDir** monitorDir, char* newFile) {
+    (*monitorDir)->fileCount++;
+    (*monitorDir)->files = realloc((*monitorDir)->files, (sizeof(char*)*(*monitorDir)->fileCount));
+    (*monitorDir)->files[(*monitorDir)->fileCount-1] = malloc(strlen(newFile) + 1);
+    strcpy( (*monitorDir)->files[(*monitorDir)->fileCount-1], newFile );
+}
+
 // Print this Monitor's directory list
 void printMonitorDirList (MonitorDir* monitorDir) {
     printf("MonitorDir directories:");

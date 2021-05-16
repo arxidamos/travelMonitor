@@ -13,7 +13,7 @@
 #include "functions.h"
 
 int main(int argc, char* argv[]) {
-    // Install signal handlers
+    // Install signal handler
     handleSignals();
 
     // Scan command line arguments
@@ -71,8 +71,7 @@ int main(int argc, char* argv[]) {
 
     while (1) {
         // Keep checking signal flags
-        checkSignalFlags(&monitorDir, &accepted, &rejected);
-
+        checkSignalFlags(&monitorDir, outfd, bufSize, bloomSize, dir_path, &bloomsHead, &stateHead, &recordsHead, &skipVaccHead, &skipNonVaccHead, &accepted, &rejected);
         // Get incoming messages
         Message* incMessage = malloc(sizeof(Message));
         // getMessage(incMessage, incfd, bufSize);

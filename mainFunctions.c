@@ -5,6 +5,9 @@
 #include "structs.h"
 #include "functions.h"
 
+// Add data to existing structures from new file
+
+
 // Check if citizenID is vaccinated
 void travelRequest (int* readyMonitors, BloomFilter* head, ChildMonitor* childMonitor, int numMonitors, int* incfd, int* outfd, int bufSize, int* accepted, int* rejected, char* citizenID, char* countryFrom, char* countryTo, char* virus, Date date) {
     BloomFilter* current = head;

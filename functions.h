@@ -59,10 +59,15 @@ Date getTime ();
 int compareSixMonths (Date a, Date b);
 
 //
+void sigUsr1HandlerParent (int sigNum);
+int checkSignalFlagsParent (int* readyMonitors);
+void handleSignalsParent (void);
+void checkChildFlags(int* readyMonitors);
 void sigchldHandler();
 void sigQuitHandler (int sigNum);
 void handleSignals(void);
-void checkSignalFlags(MonitorDir** monitorDir, int* accepted, int* rejected);
+void checkSignalFlags(MonitorDir** monitorDir, int outfd, int bufSize, int bloomSize, char* dir_path, BloomFilter** bloomsHead, State** stateHead, Record** recordsHead, SkipList** skipVaccHead, SkipList** skipNonVaccHead, int* accepted, int* rejected);
+void processUsr1(MonitorDir** monitorDir, int outfd, int bufSize, int bloomSize, char* dir_path, BloomFilter** bloomsHead, State** stateHead, Record** recordsHead, SkipList** skipVaccHead, SkipList** skipNonVaccHead);
 void checkSigQuit (State** stateHead, Record** recordsHead, BloomFilter** bloomsHead, SkipList** skipVaccHead, SkipList** skipNonVaccHead, MonitorDir* MonitorDir, char* dir_path);
 void analyseChildMessage(Message* message, ChildMonitor* childMonitor, int numMonitors, int *readyMonitors, int* outfd, int bufSize, BloomFilter** bloomsHead, int bloomSize, int* accepted, int* rejected);
 // void analyseMessage (MonitorDir** monitorDir, Message* message, int outfd, int* bufSize, int* bloomSize, char* dir_path, BloomFilter* bloomsHead);
@@ -80,6 +85,8 @@ void updateParentBlooms(BloomFilter* bloomsHead, int outfd, int bufSize);
 BloomFilter* insertBloomInParent (BloomFilter** bloomsHead, char* virus, int size, int k);
 void updateBitArray (BloomFilter* bloomFilter, char* bitArray);
 MonitorDir* insertDir (MonitorDir** head, DIR* dir, char* country, char* files[], int fileCount);
+int fileInDir (MonitorDir* monitorDir, char* newFile);
+void insertFile(MonitorDir** monitorDir, char* newFile);
 void printMonitorDirList (MonitorDir* monitorDir);
 void freeMonitorDirList (MonitorDir* head);
 #endif

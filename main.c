@@ -19,6 +19,9 @@ int main(int argc, char **argv) {
     char* dir_path;
     DIR* input_dir;
 
+    // Install signal handler
+    handleSignalsParent();
+
 	// Scan command line arguments
     if (argc != 9) {
         fprintf(stderr, "Error: 8 parameters are required.\n");
@@ -152,6 +155,7 @@ int main(int argc, char **argv) {
     fd_set incfds;
     
     while (1) {
+        // Waiting messages from Monitor(s) 
         if (readyMonitors < numMonitors) {
             // Zero the fd_set
             FD_ZERO(&incfds);
@@ -180,13 +184,14 @@ int main(int argc, char **argv) {
                     // Decode incoming messages
                     analyseChildMessage(incMessage, childMonitor, numMonitors, &readyMonitors, writefd, bufferSize, &bloomsHead, bloomSize, &accepted, &rejected);
 
+                    FD_CLR(readfd[i], &incfds);
                     free(incMessage->code);
                     free(incMessage->body);
                     free(incMessage);
                 }
             }
         }
-        // Monitors ready to receive queries
+        // Monitors ready. Receive queries
         else {
             // printf ("Everyone is ready. Waiting for commands\n");
            
@@ -196,15 +201,30 @@ int main(int argc, char **argv) {
             // vaccineStatusBloom(bloomsHead, "1958", "SARS-1");
             // vaccineStatusBloom(bloomsHead, "4215", "Variola");
             // vaccineStatusBloom(bloomsHead, "7296", "Chikungunya");
-
-            printf("Type a command:\n");            
             
-            // Wait for user's input
-            if (getUserCommand(&readyMonitors, numMonitors, childMonitor, bloomsHead,
-             dir_path, input_dir, readfd, writefd, bufferSize, &accepted, &rejected) == 1) {
+            printf("Type a command:\n");
+
+            int userCommand = getUserCommand(&readyMonitors, numMonitors, childMonitor, bloomsHead, dir_path, input_dir, readfd, writefd, bufferSize, &accepted, &rejected);
+            // Command is NULL
+            if (userCommand == -1) {
+                fflush(stdin);
+                continue;
+            }
+            // Command is /exit
+            else if (userCommand == 1) {
                 exit(0);
             }
+            
+            // // Wait for user's input
+            // if (getUserCommand(&readyMonitors, numMonitors, childMonitor, bloomsHead,
+            //  dir_path, input_dir, readfd, writefd, bufferSize, &accepted, &rejected) == 1) {
+            // }
         }
+
+
+
+
+
 
         // for (int i=0; i<numMonitors; i++) {
         //     remove(pipeParentReads);
