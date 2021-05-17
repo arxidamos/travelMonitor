@@ -111,7 +111,7 @@ int main(int argc, char **argv) {
             perror("Error opening named pipe for reading");
             exit(1);
         }
-        if ((writefd[i] = open(pipeParentWrites, O_WRONLY)) == -1) { // O_RDWR | O_NONBLOCK
+        if ((writefd[i] = open(pipeParentWrites, O_WRONLY)) == -1) {
             perror("Error opening named pipe for writing");
             exit(1);
         }
@@ -126,8 +126,8 @@ int main(int argc, char **argv) {
     int accepted =0;
     int rejected = 0;
 
-    // Signal handler for when a child process exits
-    sigchldHandler();
+    // Wait for child process exit
+    waitChildMonitors();
 
     // Convert bufSize and bloomSize to strings
     char bufSizeString[15];
@@ -136,10 +136,10 @@ int main(int argc, char **argv) {
     sprintf(bloomSizeString, "%d", bloomSize);
     // Send bufSize and bloomSize as first two messages
     for (int i=0; i<numMonitors; i++) {
-        sendBytes ('1', bufSizeString, writefd[i], bufferSize);
-        sendBytes ('2', bloomSizeString, writefd[i], bufferSize);
+        sendMessage ('1', bufSizeString, writefd[i], bufferSize);
+        sendMessage ('2', bloomSizeString, writefd[i], bufferSize);
     }
-    
+
     // Assign countries to each Monitor, round-robin
     mapCountryDirs(dir_path, numMonitors, writefd, childMonitor, bufferSize);
     for (int i=0; i<numMonitors; i++) {
@@ -149,7 +149,8 @@ int main(int argc, char **argv) {
         }
         printf("\n");
     }
-    
+
+
     // Initialise variables for structures
     BloomFilter* bloomsHead = NULL;
 
@@ -193,16 +194,13 @@ int main(int argc, char **argv) {
             }
         }
         // Monitors ready. Receive queries
-        else {
-            // printf ("Everyone is ready. Waiting for commands\n");
-           
+        else {        
             // printBloomsList(bloomsHead);
             // vaccineStatusBloom(bloomsHead, "1738", "Dengue");
             // vaccineStatusBloom(bloomsHead, "1738", "marika");
             // vaccineStatusBloom(bloomsHead, "1958", "SARS-1");
             // vaccineStatusBloom(bloomsHead, "4215", "Variola");
             // vaccineStatusBloom(bloomsHead, "7296", "Chikungunya");
-            
             printf("Type a command:\n");
 
             int userCommand = getUserCommand(&readyMonitors, numMonitors, childMonitor, bloomsHead, dir_path, input_dir, readfd, writefd, bufferSize, bloomSize, &accepted, &rejected);
@@ -214,26 +212,7 @@ int main(int argc, char **argv) {
             // Command is /exit
             else if (userCommand == 1) {
                 exit(0);
-            }
-            
-            // // Wait for user's input
-            // if (getUserCommand(&readyMonitors, numMonitors, childMonitor, bloomsHead,
-            //  dir_path, input_dir, readfd, writefd, bufferSize, &accepted, &rejected) == 1) {
-            // }
+            }         
         }
-
-
-
-
-
-
-        // for (int i=0; i<numMonitors; i++) {
-        //     remove(pipeParentReads);
-        //     remove(pipeParentWrites);
-        // }
-        // fflush(stdout);
-
-
-        // exit(0);
     }
 }

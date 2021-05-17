@@ -7,7 +7,6 @@
 
 // Add data to existing structures from new file
 
-
 // Check if citizenID is vaccinated
 void travelRequest (int* readyMonitors, BloomFilter* head, ChildMonitor* childMonitor, int numMonitors, int* incfd, int* outfd, int bufSize, int* accepted, int* rejected, char* citizenID, char* countryFrom, char* countryTo, char* virus, Date date) {
     BloomFilter* current = head;
@@ -36,7 +35,7 @@ void travelRequest (int* readyMonitors, BloomFilter* head, ChildMonitor* childMo
                     for (int x=0; x<numMonitors; x++) {
                         for (int y=0; y<childMonitor[x].countryCount; y++) {
                             if ( !strcmp(childMonitor[x].country[y], countryTo) ) {
-                                sendBytes('+', "NO", outfd[x], bufSize);
+                                sendMessage('+', "NO", outfd[x], bufSize);
                                 return;
                             }
                         }
@@ -62,7 +61,7 @@ void travelRequest (int* readyMonitors, BloomFilter* head, ChildMonitor* childMo
                         strcat(fullString, dateString);
 
                         // Send citizenID, date to Monitor
-                        sendBytes('t', fullString, outfd[i], bufSize);
+                        sendMessage('t', fullString, outfd[i], bufSize);
                         free(fullString);
                         break;
                     }
@@ -92,6 +91,37 @@ char* processTravelRequest (SkipList* head, char* citizenID, char* virus, Date d
         }
     }
     return ("NO");
+}
+
+// Search citizenID in all childs 
+void searchVaccinationStatus (SkipList* head, char* citizenID) {
+    SkipList* current = head;
+    SkipNode* node = NULL;
+    int done = 0;
+    // Iterate through Skip Lists
+    while (current) {
+        node = searchSkipList(current, citizenID);
+        if(node){
+            // Print 1st & 2nd lines only once
+            if (!done) {
+                // 1st line
+                printf("%s %s %s %s\n", node->citizenID, node->record->firstName, node->record->lastName, node->record->country->name);
+                // 2nd line
+                printf("AGE %d\n", node->record->age);
+                done = 1;
+            }
+            // Next lines
+            printf("%s ", current->virus);
+            if (node->vaccDate.year != 0) {
+                printf("VACCINATED ON %d-%d-%d\n", node->vaccDate.day, node->vaccDate.month, node->vaccDate.year);
+            }
+            else {
+                printf("NOT YET VACCINATED\n");
+            }
+        }
+        current = current->next;
+    }
+    return;
 }
 
 // Check if citizenID belongs to virus' Bloom Filter
@@ -146,7 +176,6 @@ void vaccineStatus (SkipList* head, char* citizenID, char* virus) {
 // Display all vacc and non-vacc occurences for citizenID
 void vaccineStatusAll (SkipList* head, char* citizenID) {
     SkipList* current = head;
-    // Record* record = NULL;
     SkipNode* node = NULL;
 
     // Iterate through Skip Lists
@@ -375,6 +404,20 @@ int isBetweenDates (Date a, Date x, Date b) {
     }
 }
 
+// Return current system date
+Date getTime () {
+    Date currentDate;
+    time_t t;
+    time(&t);
+    struct tm *timeInfo = localtime(&t);
+    char*buffer = malloc(strlen(ctime(&t) + 1));
+    strftime(buffer, strlen(ctime(&t) + 1), "%e-%m-%Y", timeInfo); // %m: month %Y: year %e: day of month without leading zeros
+    sscanf(buffer, "%d-%d-%d", &currentDate.day, &currentDate.month, &currentDate.year);
+    
+    free(buffer);
+    return currentDate;
+}
+
 // Check if vacc date "a" is within 6 months of travel date "b"
 int compareSixMonths (Date a, Date b) {
     if ( (b.year - a.year) > 1 || (b.year - a.year) < 0 ) {
@@ -406,18 +449,4 @@ int compareSixMonths (Date a, Date b) {
         }
     }
     return 0;
-}
-
-// Return current system date
-Date getTime () {
-    Date currentDate;
-    time_t t;
-    time(&t);
-    struct tm *timeInfo = localtime(&t);
-    char*buffer = malloc(strlen(ctime(&t) + 1));
-    strftime(buffer, strlen(ctime(&t) + 1), "%e-%m-%Y", timeInfo); // %m: month %Y: year %e: day of month without leading zeros
-    sscanf(buffer, "%d-%d-%d", &currentDate.day, &currentDate.month, &currentDate.year);
-    
-    free(buffer);
-    return currentDate;
 }

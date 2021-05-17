@@ -43,7 +43,7 @@ MonitorDir* insertDir (MonitorDir** head, DIR* dir, char* country, char* files[]
     return *head;
 }
 
-// Check if some file is included in MonitorDIr
+// Check if file is included in MonitorDIr
 int fileInDir (MonitorDir* monitorDir, char* newFile) {
     for (int i=0; i<monitorDir->fileCount; i++) {
         if ( (!strcmp(newFile, monitorDir->files[i])) ) {
@@ -61,7 +61,7 @@ void insertFile (MonitorDir** monitorDir, char* newFile) {
     strcpy( (*monitorDir)->files[(*monitorDir)->fileCount-1], newFile );
 }
 
-// Print this Monitor's directory list
+// Print Monitor's directory list
 void printMonitorDirList (MonitorDir* monitorDir) {
     printf("MonitorDir directories:");
     

@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
 #include <fcntl.h>
 #include <limits.h>
 #include <signal.h>
@@ -15,6 +16,52 @@
 static volatile sig_atomic_t flagQuit = 0;
 static volatile sig_atomic_t flagInt = 0;
 static volatile sig_atomic_t flagUsr1 = 0;
+
+// Instal signal handlers
+void handleSignals (void) {
+    // struct sigaction sigAct;
+        // // Signal set
+        // sigset_t set;
+        // sigfillset(&set);
+
+        // // Block all signals (that are present in set)
+        // if (sigprocmask(SIG_SETMASK, &set, NULL) == -1) {
+        //     perror("Error with setting signal mask");
+        // }
+        // memset(&sigAct, 0, sizeof(struct sigaction));
+        // // Initialise flags
+        // flagQuit = 0;
+
+        // sigAct.sa_handler = sigQuitHandler;
+        // sigaction(SIGQUIT, &sigAct, NULL);
+
+        // // // Add only certain signals in signalSet, will need them (to block when receiving commands)
+        // // sigemptyset(&signalSet);
+        // // sigaddset(&signalSet, SIGINT);
+        // // sigaddset(&signalSet, SIGQUIT);
+        // // sigaddset(&signalSet, SIGUSR1);
+
+        // // Unblock all signals
+        // sigemptyset(&set);
+        // if (sigprocmask(SIG_SETMASK, &set, NULL) == -1) {
+        //     perror("Error with setting signal mask");
+    // }
+
+    static struct sigaction sigAct;
+
+    sigfillset(&sigAct.sa_mask);
+    sigAct.sa_handler = sigIntHandler;
+    sigaction(SIGINT, &sigAct, NULL);
+    
+    sigAct.sa_handler = sigQuitHandler;
+    sigaction(SIGQUIT, &sigAct, NULL);
+    
+    sigAct.sa_handler = sigUsr1Handler;
+    sigaction(SIGUSR1, &sigAct, NULL);
+    
+    // sigAct.sa_handler = sigUsr2Handler;
+    // sigaction(SIGUSR2, &sigAct, NULL);
+}
 
 // Set INT flag
 void sigIntHandler (int sigNum) {
@@ -36,11 +83,8 @@ void sigUsr1Handler (int sigNum) {
 
 // Check if signal flags set
 void checkSignalFlags (MonitorDir** monitorDir, int outfd, int bufSize, int bloomSize, char* dir_path, BloomFilter** bloomsHead, State** stateHead, Record** recordsHead, SkipList** skipVaccHead, SkipList** skipNonVaccHead, int* accepted, int* rejected) {
+    // SIGINT or SIGQUIT: Print log file
     if (flagQuit == 1 || flagInt == 1) {
-        // Print to "log_file.pid"
-        // printf("TOTAL TRAVEL REQUESTS %d\n", (*accepted + *rejected));
-        // printf("ACCEPTED %d\nREJECTED %d\n", (*accepted), (*rejected));
-
         // Create file's name, inside "log_files" dir
         char* dirName = "log_files/";
         char* fileName = "log_file.";
@@ -102,61 +146,11 @@ void checkSignalFlags (MonitorDir** monitorDir, int outfd, int bufSize, int bloo
         flagQuit = 0;
         flagInt = 0;
     }
+    // SIGUSR1: Check for new file
     if (flagUsr1 == 1) {
         // Check directories for new file(s)
         processUsr1(monitorDir, outfd, bufSize, bloomSize, dir_path, bloomsHead, stateHead, recordsHead, skipVaccHead, skipNonVaccHead);
         // Reset flag
         flagUsr1 = 0;
     }
-}
-
-// Instal signal handlers
-void handleSignals (void) {
-    // struct sigaction sigAct;
-        // // Signal set
-        // sigset_t set;
-        // sigfillset(&set);
-
-        // // Block all signals (that are present in set)
-        // if (sigprocmask(SIG_SETMASK, &set, NULL) == -1) {
-        //     perror("Error with setting signal mask");
-        // }
-        // memset(&sigAct, 0, sizeof(struct sigaction));
-        // // Initialise flags
-        // flagQuit = 0;
-
-        // sigAct.sa_handler = sigQuitHandler;
-        // sigaction(SIGQUIT, &sigAct, NULL);
-
-        // // // Add only certain signals in signalSet, will need them (to block when receiving commands)
-        // // sigemptyset(&signalSet);
-        // // sigaddset(&signalSet, SIGINT);
-        // // sigaddset(&signalSet, SIGQUIT);
-        // // sigaddset(&signalSet, SIGUSR1);
-
-        // // Unblock all signals
-        // sigemptyset(&set);
-        // if (sigprocmask(SIG_SETMASK, &set, NULL) == -1) {
-        //     perror("Error with setting signal mask");
-    // }
-
-    static struct sigaction sigAct;
-
-    sigfillset(&sigAct.sa_mask);
-    sigAct.sa_handler = sigIntHandler;
-    sigaction(SIGINT, &sigAct, NULL);
-    
-    sigAct.sa_handler = sigQuitHandler;
-    sigaction(SIGQUIT, &sigAct, NULL);
-    
-    sigAct.sa_handler = sigUsr1Handler;
-    sigaction(SIGUSR1, &sigAct, NULL);
-    
-    // sigAct.sa_handler = sigChldHandler;
-    // sigaction(SIGCHLD, &sigAct, NULL);
-    
-    // sigAct.sa_handler = sigUsr2Handler;
-    // sigaction(SIGUSR2, &sigAct, NULL);
-
-
 }

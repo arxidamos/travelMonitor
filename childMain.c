@@ -24,13 +24,12 @@ int main(int argc, char* argv[]) {
     char* dir_path = malloc(strlen(argv[3]) + 1);
     strcpy(dir_path, argv[3]);
 
-     // Open writing pipe
+    // Open writing and reading named pipes
     int outfd;
     if ( (outfd = open(pipeWrite, O_WRONLY)) == -1 ) {
         perror("Problem opening writing pipe");
         exit(1);
     }
-    // Open reading pipe
     int incfd;
     if ( (incfd = open(pipeRead, O_RDONLY)) == -1 ) {
         perror("Problem opening reading pipe");
@@ -42,9 +41,7 @@ int main(int argc, char* argv[]) {
     // Structures to store records data
     BloomFilter* bloomsHead = NULL;
     State* stateHead = NULL;
-    // State* state;
     Record* recordsHead = NULL;
-    // Record* record;
     SkipList* skipVaccHead = NULL;
     SkipList* skipNonVaccHead = NULL;
     // Seed the time generator
@@ -74,27 +71,11 @@ int main(int argc, char* argv[]) {
         checkSignalFlags(&monitorDir, outfd, bufSize, bloomSize, dir_path, &bloomsHead, &stateHead, &recordsHead, &skipVaccHead, &skipNonVaccHead, &accepted, &rejected);
         // Get incoming messages
         Message* incMessage = malloc(sizeof(Message));
-        // getMessage(incMessage, incfd, bufSize);
         if (getMessage(incMessage, incfd, bufSize) == -1) {
             continue;
         }
 
-        // printf("Message IN CHILD received: %s ", incMessage->body);
-        // printf("Code IN CHILD received: %c\n", incMessage->code[0]);
-        
         // Decode incoming messages
         analyseMessage(&monitorDir, incMessage, outfd, &bufSize, &bloomSize, dir_path, &bloomsHead, &stateHead, &recordsHead, &skipVaccHead, &skipNonVaccHead, &accepted, &rejected);
-        
-        
-        // printStateList(stateHead);
-        // printRecordsList(recordsHead);
-        // printBloomsList(bloomsHead);
-        // printSkipLists(skipVaccHead);
-        // printf("---------------------\n");
-        // printSkipLists(skipNonVaccHead);
-
-        // Signal handler for SIGINT and SIGQUIT
-        // checkSigQuit(&stateHead, &recordsHead, &bloomsHead, &skipVaccHead, &skipNonVaccHead, monitorDir, dir_path);
-
     }
 }

@@ -8,10 +8,6 @@
 #define LENGTH 10
 #define RW 0666
 #define RWE 0777
-// 'F'  :   ready Monitor
-// 'C'  :   country mapping
-
-
 
 typedef struct Date {
     int day;    //dd
@@ -78,7 +74,6 @@ typedef struct MonitorDir {
     int fileCount;
     struct MonitorDir* next;
 } MonitorDir;
-
 
 #endif
 

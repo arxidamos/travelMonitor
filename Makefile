@@ -1,7 +1,7 @@
-OBJS = main.o mainFunctions.o stateList.o recordList.o bloomFilter.o skipList.o communication.o monitorDirList.o parentSignals.o childSignals.o
-CHILD_OBJS = childMain.o mainFunctions.o stateList.o recordList.o bloomFilter.o skipList.o communication.o monitorDirList.o childSignals.o parentSignals.o
-SOURCE = main.c mainFunctions.c stateList.c recordList.c bloomFilter.c skipList.c communication.c monitorDirList.c parentSignals.c childSignals.c
-CHILD_SOURCE = childMain.c mainFunctions.c stateList.c recordList.c bloomFilter.c skipList.c communication.c monitorDirList.c childSignals.c parentSignals.c 
+OBJS = main.o mainFunctions.o stateList.o recordList.o bloomFilter.o skipList.o communication.o parentSignals.o parentAux.o
+SOURCE = main.c mainFunctions.c stateList.c recordList.c bloomFilter.c skipList.c communication.c parentSignals.c parentAux.c
+CHILD_OBJS = childMain.o mainFunctions.o stateList.o recordList.o bloomFilter.o skipList.o communication.o monitorDirList.o childSignals.o childAux.o
+CHILD_SOURCE = childMain.c mainFunctions.c stateList.c recordList.c bloomFilter.c skipList.c communication.c monitorDirList.c childSignals.c childAux.c 
 HEADER = structs.h functions.h
 OUT = travelMonitor
 CHILD_OUT = child
@@ -49,6 +49,12 @@ parentSignals.o:parentSignals.c
 
 childSignals.o:childSignals.c
 	$(CC) $(FLAGS) childSignals.c
+
+parentAux.o:parentAux.c
+	$(CC) $(FLAGS) parentAux.c
+
+childAux.o:childAux.c
+	$(CC) $(FLAGS) childAux.c
 
 clean:
 	rm -f $(OBJS) $(OUT) $(CHILD_OBJS) $(CHILD_OUT)
