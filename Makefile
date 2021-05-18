@@ -1,7 +1,7 @@
-OBJS = main.o mainFunctions.o stateList.o recordList.o bloomFilter.o skipList.o communication.o parentSignals.o parentAux.o
-SOURCE = main.c mainFunctions.c stateList.c recordList.c bloomFilter.c skipList.c communication.c parentSignals.c parentAux.c
-CHILD_OBJS = childMain.o mainFunctions.o stateList.o recordList.o bloomFilter.o skipList.o communication.o monitorDirList.o childSignals.o childAux.o
-CHILD_SOURCE = childMain.c mainFunctions.c stateList.c recordList.c bloomFilter.c skipList.c communication.c monitorDirList.c childSignals.c childAux.c 
+OBJS = main.o mainFunctions.o stateList.o recordList.o bloomFilter.o skipList.o stats.o communication.o parentSignals.o parentAux.o
+SOURCE = main.c mainFunctions.c stateList.c recordList.c bloomFilter.c skipList.c stats.c communication.c parentSignals.c parentAux.c
+CHILD_OBJS = childMain.o mainFunctions.o stateList.o recordList.o bloomFilter.o skipList.o communication.o monitorDirList.o stats.o childSignals.o childAux.o
+CHILD_SOURCE = childMain.c mainFunctions.c stateList.c recordList.c bloomFilter.c skipList.c communication.c monitorDirList.c stats.c childSignals.c childAux.c 
 HEADER = structs.h functions.h
 OUT = travelMonitor
 CHILD_OUT = child
@@ -40,6 +40,9 @@ skipList.o:skipList.c
 
 monitorDirList.o:monitorDirList.c
 	$(CC) $(FLAGS) monitorDirList.c
+
+stats.o:stats.c
+	$(CC) $(FLAGS) stats.c	
 
 communication.o:communication.c
 	$(CC) $(FLAGS) communication.c		

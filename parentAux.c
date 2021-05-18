@@ -14,7 +14,7 @@
 #include "structs.h"
 
 // Analyse incoming message in Parent
-void analyseChildMessage(Message* message, ChildMonitor* childMonitor, int numMonitors, int *readyMonitors, int* outfd, int bufSize, BloomFilter** bloomsHead, int bloomSize, int* accepted, int* rejected) {
+void analyseChildMessage(Message* message, ChildMonitor* childMonitor, int numMonitors, int *readyMonitors, int* outfd, int bufSize, BloomFilter** bloomsHead, int bloomSize, int* accepted, int* rejected, Stats* stats) {
     // Message 'F': Monitor reports processing finished
     if (message->code[0] =='F') {
         (*readyMonitors)++;
@@ -49,14 +49,17 @@ void analyseChildMessage(Message* message, ChildMonitor* childMonitor, int numMo
         if (!strcmp(answer, "YES")) {
             printf("REQUEST ACCEPTED – HAPPY TRAVELS\n");
             (*accepted)++;
+            informStats(stats, HIT);
         }        
         else if (!strcmp(answer, "NO")) {
             printf("REQUEST REJECTED – YOU ARE NOT VACCINATED\n");
             (*rejected)++;
+            informStats(stats, MISS);
         }
         else if (!strcmp(answer, "BUT")) {
             printf("REQUEST REJECTED – YOU WILL NEED ANOTHER VACCINATION BEFORE TRAVEL DATE\n");
-            (*rejected)++;            
+            (*rejected)++;
+            informStats(stats, MISS); 
         }
         (*readyMonitors)++;
         
@@ -211,15 +214,15 @@ void resendCountryDirs (char* dir_path, int numMonitors, int outfd, ChildMonitor
 }
 
 // Receive commands from user
-int getUserCommand(int* readyMonitors, int numMonitors, ChildMonitor* childMonitor, BloomFilter* bloomsHead, char* dir_path, DIR* input_dir, int* incfd, int* outfd, int bufSize, int bloomSize, int* accepted, int* rejected) {
+int getUserCommand(Stats* stats, int* readyMonitors, int numMonitors, ChildMonitor* childMonitor, BloomFilter* bloomsHead, char* dir_path, DIR* input_dir, int* incfd, int* outfd, int bufSize, int bloomSize, int* accepted, int* rejected) {
     char* command = NULL;
-    int size = 256;
+    int size = 512;
     char input[size];
 
     // Get user commands
     if ( (fgets(input, size, stdin) == NULL) ) {
         // Check if some signal's flag is on
-        if ( (checkSignalFlagsParent(input_dir, dir_path, bufSize, bloomSize, readyMonitors, numMonitors, incfd, outfd, childMonitor, accepted, rejected, bloomsHead) == 1) ) {
+        if ( (checkSignalFlagsParent(stats, input_dir, dir_path, bufSize, bloomSize, readyMonitors, numMonitors, incfd, outfd, childMonitor, accepted, rejected, bloomsHead) == 1) ) {
             // SIGINT or SIGQUIT caught
             return 1;
         }
@@ -248,17 +251,9 @@ int getUserCommand(int* readyMonitors, int numMonitors, ChildMonitor* childMonit
         }
         // Create log file
         createLogFileParent (numMonitors, childMonitor, accepted, rejected);
+        
         // Deallocate memory
-        free(dir_path);
-        closedir(input_dir);
-        for (int i=0; i<numMonitors; i++) {
-            for (int j=0; j<childMonitor[i].countryCount; j++) {
-                free(childMonitor[i].country[j]);
-            }
-            free(childMonitor[i].country);
-        }
-        freeBlooms(bloomsHead);
-
+        exitApp(stats, input_dir, dir_path, bufSize, bloomSize, readyMonitors, numMonitors, incfd, outfd, childMonitor, accepted, rejected, bloomsHead);
         return 1;
     }
     else if (!strcmp(command, "/vaccineStatusBloom")) {
@@ -315,8 +310,7 @@ int getUserCommand(int* readyMonitors, int numMonitors, ChildMonitor* childMonit
                             virus = malloc(strlen(command)+1);
                             strcpy(virus, command);
 
-                            // vaccineStatusBloom(bloomsHead, citizenID, virus);
-                            travelRequest(readyMonitors, bloomsHead, childMonitor, numMonitors, incfd, outfd, bufSize, accepted, rejected, citizenID, countryFrom, countryTo, virus, date);
+                            travelRequest(stats, readyMonitors, bloomsHead, childMonitor, numMonitors, incfd, outfd, bufSize, accepted, rejected, citizenID, countryFrom, countryTo, virus, date);
 
                             free(virus);
                         }
@@ -341,6 +335,12 @@ int getUserCommand(int* readyMonitors, int numMonitors, ChildMonitor* childMonit
         }
         else {
             printf("Please enter the following parameters: citizenID date countryFrom countryTo virusName.\n");
+        }
+    }
+    else if (!strcmp(command, "/travelStats")) {
+        printf("(*stats).count = %d\n", (*stats).count);
+        for (int i=0; i<(*stats).count; i++) {
+            printf("%d) %s, %d-%d-%d, %d %s\n",i, (*stats).country[i], (*stats).date[i].day, (*stats).date[i].month, (*stats).date[i].year, (*stats).hitAndMiss[i], (*stats).virus[i]);
         }
     }
     else if (!strcmp(command, "/addVaccinationRecords")) {
@@ -474,4 +474,30 @@ void updateBitArray (BloomFilter* bloomFilter, char* bitArray) {
         i += 2;
     }
     free(newIndices);
+}
+
+// Deallocate memory and exit
+void exitApp(Stats* stats, DIR* input_dir, char* dir_path, int bufSize, int bloomSize, int* readyMonitors, int numMonitors, int* readfd, int* writefd, ChildMonitor* childMonitor, int* accepted, int* rejected, BloomFilter* bloomsHead) {
+    struct dirent** directory;
+    int dirCount;
+    // Scan directory in alphabetical order
+    dirCount = scandir(dir_path, &directory, NULL, alphasort);
+    if ( (dirCount-2) < numMonitors) {
+        numMonitors = dirCount-2;
+    }
+    for (int i=0; i<numMonitors; i++) {
+        for (int j=0; j<childMonitor[i].countryCount; j++) {
+            free(childMonitor[i].country[j]);
+        }
+        free(childMonitor[i].country);
+    }
+
+    for (int i = 0; i < dirCount; i++) {
+        free(directory[i]);
+    }
+    free(directory);
+    free(dir_path);
+    closedir(input_dir);
+    freeStats(stats);
+    freeBlooms(bloomsHead);
 }

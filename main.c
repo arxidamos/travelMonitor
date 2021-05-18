@@ -125,6 +125,8 @@ int main(int argc, char **argv) {
     // Vars for stats
     int accepted =0;
     int rejected = 0;
+    Stats stats;
+    initStats(&stats);
 
     // Wait for child process exit
     waitChildMonitors();
@@ -149,7 +151,6 @@ int main(int argc, char **argv) {
         }
         printf("\n");
     }
-
 
     // Initialise variables for structures
     BloomFilter* bloomsHead = NULL;
@@ -184,7 +185,7 @@ int main(int argc, char **argv) {
                     // printf("Code received: %c\n", incMessage->code[0]);
                     
                     // Decode incoming messages
-                    analyseChildMessage(incMessage, childMonitor, numMonitors, &readyMonitors, writefd, bufferSize, &bloomsHead, bloomSize, &accepted, &rejected);
+                    analyseChildMessage(incMessage, childMonitor, numMonitors, &readyMonitors, writefd, bufferSize, &bloomsHead, bloomSize, &accepted, &rejected, &stats);
 
                     FD_CLR(readfd[i], &incfds);
                     free(incMessage->code);
@@ -203,7 +204,7 @@ int main(int argc, char **argv) {
             // vaccineStatusBloom(bloomsHead, "7296", "Chikungunya");
             printf("Type a command:\n");
 
-            int userCommand = getUserCommand(&readyMonitors, numMonitors, childMonitor, bloomsHead, dir_path, input_dir, readfd, writefd, bufferSize, bloomSize, &accepted, &rejected);
+            int userCommand = getUserCommand(&stats, &readyMonitors, numMonitors, childMonitor, bloomsHead, dir_path, input_dir, readfd, writefd, bufferSize, bloomSize, &accepted, &rejected);
             // Command is NULL
             if (userCommand == -1) {
                 fflush(stdin);
@@ -212,7 +213,7 @@ int main(int argc, char **argv) {
             // Command is /exit
             else if (userCommand == 1) {
                 exit(0);
-            }         
+            }
         }
     }
 }

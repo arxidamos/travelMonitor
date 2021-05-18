@@ -8,6 +8,8 @@
 #define LENGTH 10
 #define RW 0666
 #define RWE 0777
+#define HIT 1
+#define MISS 0
 
 typedef struct Date {
     int day;    //dd
@@ -74,6 +76,21 @@ typedef struct MonitorDir {
     int fileCount;
     struct MonitorDir* next;
 } MonitorDir;
+
+// typedef struct Stats {
+//     Date date;
+//     int approved;
+//     struct Stats* next;
+// } Stats;
+
+typedef struct Stats {
+    Date* date;
+    int* hitAndMiss;
+    char** virus;
+    char** country;
+    int count;
+} Stats;
+
 
 #endif
 

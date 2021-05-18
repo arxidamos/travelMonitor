@@ -8,13 +8,15 @@
 // Add data to existing structures from new file
 
 // Check if citizenID is vaccinated
-void travelRequest (int* readyMonitors, BloomFilter* head, ChildMonitor* childMonitor, int numMonitors, int* incfd, int* outfd, int bufSize, int* accepted, int* rejected, char* citizenID, char* countryFrom, char* countryTo, char* virus, Date date) {
+void travelRequest (Stats* stats, int* readyMonitors, BloomFilter* head, ChildMonitor* childMonitor, int numMonitors, int* incfd, int* outfd, int bufSize, int* accepted, int* rejected, char* citizenID, char* countryFrom, char* countryTo, char* virus, Date date) {
     BloomFilter* current = head;
     unsigned char* id = (unsigned char*)citizenID;
     unsigned long hash;
     unsigned int set = 1; // All 0s and leftmost bit=1
     int x;
 
+    
+    addToStats(stats, virus, countryTo, date);
     while (current) {
         // printf("Checking BLoom Filter %s\n", current->virus);
         if (!strcmp(current->virus, virus)) {
@@ -30,7 +32,10 @@ void travelRequest (int* readyMonitors, BloomFilter* head, ChildMonitor* childMo
                 // Check if bitArray has *1* in the same spot
                 if ((current->bitArray[x/32] & set) == 0) {
                     printf("REQUEST REJECTED - YOU ARE NOT VACCINATED\n");
-                    (*rejected)++;
+                    (*rejected)++;                    
+
+                    informStats(stats, MISS);
+
                     // Send increment counter message
                     for (int x=0; x<numMonitors; x++) {
                         for (int y=0; y<childMonitor[x].countryCount; y++) {

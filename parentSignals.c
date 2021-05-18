@@ -81,7 +81,7 @@ void sigChldHandlerParent(int sigNum) {
 }
 
 // Check if signal flags set, act accordingly
-int checkSignalFlagsParent (DIR* input_dir, char* dir_path, int bufSize, int bloomSize, int* readyMonitors, int numMonitors, int* readfd, int* writefd, ChildMonitor* childMonitor, int* accepted, int* rejected, BloomFilter* bloomsHead) {
+int checkSignalFlagsParent (Stats* stats, DIR* input_dir, char* dir_path, int bufSize, int bloomSize, int* readyMonitors, int numMonitors, int* readfd, int* writefd, ChildMonitor* childMonitor, int* accepted, int* rejected, BloomFilter* bloomsHead) {
     // SIGUSR1: Sent by child, await its response
     if (flagUsr1Parent == 1) {
         // Wait for child's message
@@ -137,16 +137,7 @@ int checkSignalFlagsParent (DIR* input_dir, char* dir_path, int bufSize, int blo
                 // Create log file
                 createLogFileParent (numMonitors, childMonitor, accepted, rejected);
                 // Deallocate memory
-                free(dir_path);
-                closedir(input_dir);
-                for (int i=0; i<numMonitors; i++) {
-                    for (int j=0; j<childMonitor[i].countryCount; j++) {
-                        free(childMonitor[i].country[j]);
-                    }
-                    free(childMonitor[i].country);
-                }
-                freeBlooms(bloomsHead);
-                
+                exitApp(stats, input_dir, dir_path, bufSize, bloomSize, readyMonitors, numMonitors, readfd, writefd, childMonitor, accepted, rejected, bloomsHead);
                 return 1;
             }
         }

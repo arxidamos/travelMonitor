@@ -45,7 +45,7 @@ void freeSkipNodes (SkipList* skipList);
 
 // mainFunctions.c
 // Command functions
-void travelRequest (int* readyMonitors, BloomFilter* head, ChildMonitor* childMonitor, int numMonitors, int* incfd, int* outfd, int bufSize, int* accepted, int* rejected, char* citizenID, char* countryFrom, char* countryTo, char* virus, Date date);
+void travelRequest (Stats* stats, int* readyMonitors, BloomFilter* head, ChildMonitor* childMonitor, int numMonitors, int* incfd, int* outfd, int bufSize, int* accepted, int* rejected, char* citizenID, char* countryFrom, char* countryTo, char* virus, Date date);
 char* processTravelRequest (SkipList* head, char* citizenID, char* virus, Date date);
 void searchVaccinationStatus (SkipList* head, char* citizenID);
 void vaccineStatusBloom (BloomFilter* head, char* citizenID, char* virus);
@@ -72,13 +72,14 @@ void updateParentBlooms(BloomFilter* bloomsHead, int outfd, int bufSize);
 int compare (const void * a, const void * b);
 
 // parentAux.c
-void analyseChildMessage(Message* message, ChildMonitor* childMonitor, int numMonitors, int *readyMonitors, int* outfd, int bufSize, BloomFilter** bloomsHead, int bloomSize, int* accepted, int* rejected);
+void analyseChildMessage(Message* message, ChildMonitor* childMonitor, int numMonitors, int *readyMonitors, int* outfd, int bufSize, BloomFilter** bloomsHead, int bloomSize, int* accepted, int* rejected, Stats* stats);
 void mapCountryDirs (char* dir_path, int numMonitors, int outfd[], ChildMonitor childMonitor[], int bufSize);
 void replaceChild (pid_t pid, char* dir_path, int bufSize, int bloomSize, int numMonitors, int* readfd, int* writefd, ChildMonitor* childMonitor);
 void resendCountryDirs (char* dir_path, int numMonitors, int outfd, ChildMonitor childMonitor, int bufSize);
-int getUserCommand(int* readyMonitors, int numMonitors, ChildMonitor* childMonitor, BloomFilter* bloomsHead, char* dir_path, DIR* input_dir, int* incfd, int* outfd, int bufSize, int bloomSize, int* accepted, int* rejected);
+int getUserCommand(Stats* stats, int* readyMonitors, int numMonitors, ChildMonitor* childMonitor, BloomFilter* bloomsHead, char* dir_path, DIR* input_dir, int* incfd, int* outfd, int bufSize, int bloomSize, int* accepted, int* rejected);
 void createLogFileParent (int numMonitors, ChildMonitor* childMonitor, int* accepted, int* rejected);
 void updateBitArray (BloomFilter* bloomFilter, char* bitArray);
+void exitApp(Stats* stats, DIR* input_dir, char* dir_path, int bufSize, int bloomSize, int* readyMonitors, int numMonitors, int* readfd, int* writefd, ChildMonitor* childMonitor, int* accepted, int* rejected, BloomFilter* bloomsHead);
 
 // childSignals.c
 void handleSignals(void);
@@ -94,7 +95,13 @@ void sigUsr1HandlerParent (int sigNum);
 void sigIntHandlerParent (int sigNum);
 void sigQuitHandlerParent (int sigNum);
 void sigChldHandlerParent(int sigNum);
-int checkSignalFlagsParent (DIR* input_dir, char* dir_path, int bufSize, int bloomSize, int* readyMonitors, int numMonitors, int* readfd, int* writefd, ChildMonitor* childMonitor, int* accepted, int* rejected, BloomFilter* bloomsHead);
+int checkSignalFlagsParent (Stats* stats, DIR* input_dir, char* dir_path, int bufSize, int bloomSize, int* readyMonitors, int numMonitors, int* readfd, int* writefd, ChildMonitor* childMonitor, int* accepted, int* rejected, BloomFilter* bloomsHead);
+
+// stats.c
+void initStats(Stats* stats);
+void addToStats(Stats* stats, char* virus, char* countryTo, Date date);
+void informStats (Stats* stats, int hitMiss);
+void freeStats(Stats* stats);
 
 // monitorDirList.c
 MonitorDir* insertDir (MonitorDir** head, DIR* dir, char* country, char* files[], int fileCount);
