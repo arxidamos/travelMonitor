@@ -5,8 +5,6 @@
 #include "structs.h"
 #include "functions.h"
 
-// Add data to existing structures from new file
-
 // Check if citizenID is vaccinated
 void travelRequest (Stats* stats, int* readyMonitors, BloomFilter* head, ChildMonitor* childMonitor, int numMonitors, int* incfd, int* outfd, int bufSize, int* accepted, int* rejected, char* citizenID, char* countryFrom, char* countryTo, char* virus, Date date) {
     BloomFilter* current = head;
@@ -78,6 +76,45 @@ void travelRequest (Stats* stats, int* readyMonitors, BloomFilter* head, ChildMo
     }
     printf("There is no Bloom Filter for the virus name you inserted.\n");
     return;
+}
+
+// Print request stats
+void travelStats (Stats stats, char* virus, Date date1, Date date2, char* country) {
+    int total = 0;
+    int accepted = 0;
+    int rejected = 0;
+    // Country parameter passed
+    if (country) {
+        for (int i=0; i<stats.count; i++) {
+            // Get requests for virus, country, between date1-date2
+            if ( !strcmp(stats.virus[i], virus) && !strcmp(stats.country[i], country) && isBetweenDates(date1, stats.date[i], date2) ) {
+                if (stats.hitAndMiss[i] == HIT) {
+                    accepted++;
+                }
+                else if (stats.hitAndMiss[i] == MISS) {
+                    rejected++;
+                }
+                total++;
+            }
+        }
+    }
+    // No country parameter passed
+    else {
+        for (int i=0; i<stats.count; i++) {
+            // Get requests for virus, between date1-date2
+            if ( !strcmp(stats.virus[i], virus) && isBetweenDates(date1, stats.date[i], date2) ) {
+                if (stats.hitAndMiss[i] == HIT) {
+                    accepted++;
+                }
+                else if (stats.hitAndMiss[i] == MISS) {
+                    rejected++;
+                }
+                total++;
+            }
+        }
+    }
+
+    printf("TOTAL REQUESTS %d\nACCEPTED %d\n REJECTED %d\n", total, accepted, rejected);
 }
 
 // Check if cizitenID is vaccinated 6 months prior to date

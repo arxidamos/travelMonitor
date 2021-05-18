@@ -232,7 +232,7 @@ int getUserCommand(Stats* stats, int* readyMonitors, int numMonitors, ChildMonit
     
     char* citizenID;
     char* virus;
-    Date date;
+    Date date, date1, date2;
 
     // Get the command
     command = strtok(input, " ");
@@ -338,9 +338,48 @@ int getUserCommand(Stats* stats, int* readyMonitors, int numMonitors, ChildMonit
         }
     }
     else if (!strcmp(command, "/travelStats")) {
-        printf("(*stats).count = %d\n", (*stats).count);
-        for (int i=0; i<(*stats).count; i++) {
-            printf("%d) %s, %d-%d-%d, %d %s\n",i, (*stats).country[i], (*stats).date[i].day, (*stats).date[i].month, (*stats).date[i].year, (*stats).hitAndMiss[i], (*stats).virus[i]);
+        // Get virusName
+        command = strtok(NULL, " ");
+        if (command) {
+            char* virus = malloc(strlen(command)+1);
+            strcpy(virus, command);
+
+            // Get date1
+            command = strtok(NULL, " ");
+            if (command) {
+                sscanf(command, "%d-%d-%d", &date1.day, &date1.month, &date1.year);
+
+                // Get date2
+                command = strtok(NULL, " ");
+                if (command) {
+                    sscanf(command, "%d-%d-%d", &date2.day, &date2.month, &date2.year);
+
+                    // Get [country]
+                    command = strtok(NULL, " ");
+                    if (command) {
+                        char* country = malloc(strlen(command)+1);
+                        strcpy(country, command);
+
+                        travelStats((*stats), virus, date1, date2, country);
+
+                        free(country);
+                    }
+                    // No [country]
+                    else {
+                        travelStats((*stats), virus, date1, date2, NULL);
+                    }
+                }
+                else {
+                    printf("Please also enter the following parameters: date2 [country].\n");
+                }
+            }
+            else {
+                printf("Please also enter the following parameters: date1 date2 [country].\n");
+            }
+            free(virus);
+        }
+        else {
+            printf("Please enter the following parameters: virusName date1 date2 [country].\n");
         }
     }
     else if (!strcmp(command, "/addVaccinationRecords")) {

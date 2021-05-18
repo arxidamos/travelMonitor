@@ -46,6 +46,7 @@ void freeSkipNodes (SkipList* skipList);
 // mainFunctions.c
 // Command functions
 void travelRequest (Stats* stats, int* readyMonitors, BloomFilter* head, ChildMonitor* childMonitor, int numMonitors, int* incfd, int* outfd, int bufSize, int* accepted, int* rejected, char* citizenID, char* countryFrom, char* countryTo, char* virus, Date date);
+void travelStats (Stats stats, char* virus, Date date1, Date date2, char* country);
 char* processTravelRequest (SkipList* head, char* citizenID, char* virus, Date date);
 void searchVaccinationStatus (SkipList* head, char* citizenID);
 void vaccineStatusBloom (BloomFilter* head, char* citizenID, char* virus);

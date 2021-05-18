@@ -77,12 +77,6 @@ typedef struct MonitorDir {
     struct MonitorDir* next;
 } MonitorDir;
 
-// typedef struct Stats {
-//     Date date;
-//     int approved;
-//     struct Stats* next;
-// } Stats;
-
 typedef struct Stats {
     Date* date;
     int* hitAndMiss;
@@ -91,6 +85,4 @@ typedef struct Stats {
     int count;
 } Stats;
 
-
 #endif
-
