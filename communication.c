@@ -25,7 +25,7 @@ int getMessage (Message* incMessage, int incfd, int bufSize) {
     char* header = calloc((LENGTH + 1), sizeof(char));
     header = readMessage(header, LENGTH, incfd, bufSize);
     header[strlen(header)] = '\0';
-    incMessage->length = atoi(header+1);    
+    incMessage->length = atoi(header+1);
 
     // 3rd get the actual message
     incMessage->body = calloc( (incMessage->length+1), sizeof(char));
@@ -69,11 +69,11 @@ char* readMessage(char* msg, int length, int fd, int bufSize) {
 }
 
 // Send message
-void sendMessage (char code, char* body, int fd, int bufSize) {  
-    // Initialize buffer    
+void sendMessage (char code, char* body, int fd, int bufSize) {
+    // Initialize buffer
     char* buf = calloc(bufSize, sizeof(char));
 
-    // Message: [charCode] + [length of message] +  [message] + [\0]
+    // Message: [charCode] + [length of message] + [message] + [\0]
     char* msg = malloc( sizeof(char)*(1 + LENGTH + strlen(body) + 1) );
     // First char: code
     msg[0] = code;
@@ -83,7 +83,7 @@ void sendMessage (char code, char* body, int fd, int bufSize) {
     snprintf(msg+LENGTH+1, strlen(body)+1, "%s", body);
     // Last char: '\0'
     msg[LENGTH+strlen(body)+1] = '\0';
-   
+
     // Send the message
     int sentSoFar = 0;
     while (sentSoFar < strlen(msg)) {
@@ -104,7 +104,7 @@ void sendMessage (char code, char* body, int fd, int bufSize) {
                 perror("Error with writing message");
                 exit(1);
             }
-        }        
+        }
         // Keep sending until whole message sent
         sentSoFar += sent;
     }

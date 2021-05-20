@@ -274,7 +274,6 @@ void analyseMessage (MonitorDir** monitorDir, Message* message, int outfd, int* 
     }
     // Message '+': Parent informs to increment counters
     else if (message->code[0] == '+') {
-        // pritnf("Why don't i get it?\n");
         if (!strcmp(message->body, "YES")) {
             (*accepted)++;
         }

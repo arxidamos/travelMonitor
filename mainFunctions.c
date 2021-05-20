@@ -13,8 +13,8 @@ void travelRequest (Stats* stats, int* readyMonitors, BloomFilter* head, ChildMo
     unsigned int set = 1; // All 0s and leftmost bit=1
     int x;
 
-    
     addToStats(stats, virus, countryTo, date);
+
     while (current) {
         // printf("Checking BLoom Filter %s\n", current->virus);
         if (!strcmp(current->virus, virus)) {
@@ -114,7 +114,7 @@ void travelStats (Stats stats, char* virus, Date date1, Date date2, char* countr
         }
     }
 
-    printf("TOTAL REQUESTS %d\nACCEPTED %d\n REJECTED %d\n", total, accepted, rejected);
+    printf("TOTAL REQUESTS %d\nACCEPTED %d\nREJECTED %d\n", total, accepted, rejected);
 }
 
 // Check if cizitenID is vaccinated 6 months prior to date

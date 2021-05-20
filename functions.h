@@ -73,7 +73,7 @@ void updateParentBlooms(BloomFilter* bloomsHead, int outfd, int bufSize);
 int compare (const void * a, const void * b);
 
 // parentAux.c
-void analyseChildMessage(Message* message, ChildMonitor* childMonitor, int numMonitors, int *readyMonitors, int* outfd, int bufSize, BloomFilter** bloomsHead, int bloomSize, int* accepted, int* rejected, Stats* stats);
+void analyseChildMessage(int* incfd, Message* message, ChildMonitor* childMonitor, int numMonitors, int *readyMonitors, int* outfd, int bufSize, BloomFilter** bloomsHead, int bloomSize, int* accepted, int* rejected, Stats* stats);
 void mapCountryDirs (char* dir_path, int numMonitors, int outfd[], ChildMonitor childMonitor[], int bufSize);
 void replaceChild (pid_t pid, char* dir_path, int bufSize, int bloomSize, int numMonitors, int* readfd, int* writefd, ChildMonitor* childMonitor);
 void resendCountryDirs (char* dir_path, int numMonitors, int outfd, ChildMonitor childMonitor, int bufSize);
@@ -88,15 +88,19 @@ void sigIntHandler (int sigNum);
 void sigQuitHandler (int sigNum);
 void sigUsr1Handler (int sigNum);
 void checkSignalFlags(MonitorDir** monitorDir, int outfd, int bufSize, int bloomSize, char* dir_path, BloomFilter** bloomsHead, State** stateHead, Record** recordsHead, SkipList** skipVaccHead, SkipList** skipNonVaccHead, int* accepted, int* rejected);
+void blockSignals (void);
+void unblockSignals (void);
 
 // parentSignals.c
-void waitChildMonitors (void);
+void waitChildMonitors (Stats* stats, DIR* input_dir, char* dir_path, int bufSize, int bloomSize, int* readyMonitors, int numMonitors, int* readfd, int* writefd, ChildMonitor* childMonitor, int* accepted, int* rejected, BloomFilter* bloomsHead);
 void handleSignalsParent (void);
 void sigUsr1HandlerParent (int sigNum);
 void sigIntHandlerParent (int sigNum);
 void sigQuitHandlerParent (int sigNum);
 void sigChldHandlerParent(int sigNum);
 int checkSignalFlagsParent (Stats* stats, DIR* input_dir, char* dir_path, int bufSize, int bloomSize, int* readyMonitors, int numMonitors, int* readfd, int* writefd, ChildMonitor* childMonitor, int* accepted, int* rejected, BloomFilter* bloomsHead);
+void blockSignalsParent (void);
+void unblockSignalsParent (void);
 
 // stats.c
 void initStats(Stats* stats);

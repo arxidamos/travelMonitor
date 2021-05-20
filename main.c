@@ -20,6 +20,7 @@ int main(int argc, char **argv) {
     DIR* input_dir;
 
     // Install signal handler
+    blockSignalsParent();
     handleSignalsParent();
 
 	// Scan command line arguments
@@ -57,7 +58,7 @@ int main(int argc, char **argv) {
                 fprintf(stderr, "Cannot open directory: %s\n", argv[i+1]);
                 return 1;
             }
-        }        
+        }
 	}
 
     // Create directory for the named pipes
@@ -127,9 +128,8 @@ int main(int argc, char **argv) {
     int rejected = 0;
     Stats stats;
     initStats(&stats);
-
-    // Wait for child process exit
-    waitChildMonitors();
+    // Initialise structure
+    BloomFilter* bloomsHead = NULL;
 
     // Convert bufSize and bloomSize to strings
     char bufSizeString[15];
@@ -152,13 +152,16 @@ int main(int argc, char **argv) {
         printf("\n");
     }
 
-    // Initialise variables for structures
-    BloomFilter* bloomsHead = NULL;
+    // Check any blocked messages
+    unblockSignalsParent();
+    if (checkSignalFlagsParent(&stats, input_dir, dir_path, bufferSize, bloomSize, &readyMonitors, numMonitors, readfd, writefd, childMonitor, &accepted, &rejected, bloomsHead) == 1) {
+        exit(0);
+    }
 
     fd_set incfds;
     
     while (1) {
-        // Waiting messages from Monitor(s) 
+        // Monitor(s) about to send message
         if (readyMonitors < numMonitors) {
             // Zero the fd_set
             FD_ZERO(&incfds);
@@ -181,11 +184,9 @@ int main(int argc, char **argv) {
                     // Read incoming messages
                     Message* incMessage = malloc(sizeof(Message));
                     getMessage(incMessage, readfd[i], bufferSize);
-                    // printf("Message in PARENT received: %s ", incMessage->body);
-                    // printf("Code received: %c\n", incMessage->code[0]);
                     
                     // Decode incoming messages
-                    analyseChildMessage(incMessage, childMonitor, numMonitors, &readyMonitors, writefd, bufferSize, &bloomsHead, bloomSize, &accepted, &rejected, &stats);
+                    analyseChildMessage(readfd, incMessage, childMonitor, numMonitors, &readyMonitors, writefd, bufferSize, &bloomsHead, bloomSize, &accepted, &rejected, &stats);
 
                     FD_CLR(readfd[i], &incfds);
                     free(incMessage->code);
@@ -194,16 +195,9 @@ int main(int argc, char **argv) {
                 }
             }
         }
-        // Monitors ready. Receive queries
-        else {        
-            // printBloomsList(bloomsHead);
-            // vaccineStatusBloom(bloomsHead, "1738", "Dengue");
-            // vaccineStatusBloom(bloomsHead, "1738", "marika");
-            // vaccineStatusBloom(bloomsHead, "1958", "SARS-1");
-            // vaccineStatusBloom(bloomsHead, "4215", "Variola");
-            // vaccineStatusBloom(bloomsHead, "7296", "Chikungunya");
+        // Monitors ready. Receive user queries
+        else {
             printf("Type a command:\n");
-
             int userCommand = getUserCommand(&stats, &readyMonitors, numMonitors, childMonitor, bloomsHead, dir_path, input_dir, readfd, writefd, bufferSize, bloomSize, &accepted, &rejected);
             // Command is NULL
             if (userCommand == -1) {

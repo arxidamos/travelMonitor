@@ -14,13 +14,13 @@
 #include "structs.h"
 
 // Analyse incoming message in Parent
-void analyseChildMessage(Message* message, ChildMonitor* childMonitor, int numMonitors, int *readyMonitors, int* outfd, int bufSize, BloomFilter** bloomsHead, int bloomSize, int* accepted, int* rejected, Stats* stats) {
+void analyseChildMessage(int* incfd, Message* message, ChildMonitor* childMonitor, int numMonitors, int *readyMonitors, int* outfd, int bufSize, BloomFilter** bloomsHead, int bloomSize, int* accepted, int* rejected, Stats* stats) {
     // Message 'F': Monitor reports processing finished
     if (message->code[0] =='F') {
         (*readyMonitors)++;
     }
     // Message 'B': Monitor sends Bloom Filter
-    if (message->code[0] == 'B') {    
+    if (message->code[0] == 'B') {
         BloomFilter* bloomFilter = NULL;
         int k = 16;
 
@@ -50,7 +50,7 @@ void analyseChildMessage(Message* message, ChildMonitor* childMonitor, int numMo
             printf("REQUEST ACCEPTED – HAPPY TRAVELS\n");
             (*accepted)++;
             informStats(stats, HIT);
-        }        
+        }
         else if (!strcmp(answer, "NO")) {
             printf("REQUEST REJECTED – YOU ARE NOT VACCINATED\n");
             (*rejected)++;
@@ -74,6 +74,27 @@ void analyseChildMessage(Message* message, ChildMonitor* childMonitor, int numMo
             }
         }
     }
+    // Message '1': Monitor reports reading initial messages
+    if (message->code[0] == '1') {
+        // Get pid of child that sent message
+        int index;
+        pid_t pid = (pid_t)atoi(message->body);
+        for (int i=0; i<numMonitors; i++) {
+            if (pid == childMonitor[i].pid) {
+                index = i;
+                break;
+            }
+        }
+        // Re-open connection non-blockingly
+        close(incfd[index]);
+        char pipeParentReads[25];
+        sprintf(pipeParentReads, "./named_pipes/readPipe%d", index);
+        // Open reading & writing fds for child process, non-blockingly
+        if ((incfd[index] = open(pipeParentReads, O_RDONLY | O_NONBLOCK)) == -1) {
+            perror("Error opening named pipe for reading");
+            exit(1);
+        }
+    }
 }
 
 // Map countries to Monitors, round robin
@@ -88,7 +109,7 @@ void mapCountryDirs (char* dir_path, int numMonitors, int outfd[], ChildMonitor 
     for (int j=0; j<fileCount; j++) {
        char* dirName = directory[j]->d_name;
         // Avoid assigning dirs . and ..
-        if (strcmp(dirName, ".") && strcmp(dirName, "..")) {     
+        if (strcmp(dirName, ".") && strcmp(dirName, "..")) {
             // Send country assignment command
             sendMessage('C', dirName, outfd[i], bufSize);
             // Store each country in its childMonitor structure
@@ -199,18 +220,16 @@ void replaceChild (pid_t pid, char* dir_path, int bufSize, int bloomSize, int nu
     
     // Assign the same countries to new Monitor
     resendCountryDirs(dir_path, numMonitors, writefd[i], childMonitor[i], bufSize);
-
+    printf("FINISHED RESENDING COUNTRIES\n");
 }
 
 // Send previous Monitor's countries to new Monitor
 void resendCountryDirs (char* dir_path, int numMonitors, int outfd, ChildMonitor childMonitor, int bufSize) {
     for (int i=0; i<childMonitor.countryCount; i++) {
         sendMessage('C', childMonitor.country[i], outfd, bufSize);
-        printf("Sent country DIrs to new monitor\n");
     }
     // When mapping ready, send 'F' message
     sendMessage('F', "", outfd, bufSize);
-    printf("Sent F message to new monitor\n");
 }
 
 // Receive commands from user
@@ -309,7 +328,7 @@ int getUserCommand(Stats* stats, int* readyMonitors, int numMonitors, ChildMonit
                         if (command) {
                             virus = malloc(strlen(command)+1);
                             strcpy(virus, command);
-
+                            
                             travelRequest(stats, readyMonitors, bloomsHead, childMonitor, numMonitors, incfd, outfd, bufSize, accepted, rejected, citizenID, countryFrom, countryTo, virus, date);
 
                             free(virus);

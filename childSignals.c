@@ -17,36 +17,8 @@ static volatile sig_atomic_t flagQuit = 0;
 static volatile sig_atomic_t flagInt = 0;
 static volatile sig_atomic_t flagUsr1 = 0;
 
-// Instal signal handlers
+// Install signal handlers
 void handleSignals (void) {
-    // struct sigaction sigAct;
-        // // Signal set
-        // sigset_t set;
-        // sigfillset(&set);
-
-        // // Block all signals (that are present in set)
-        // if (sigprocmask(SIG_SETMASK, &set, NULL) == -1) {
-        //     perror("Error with setting signal mask");
-        // }
-        // memset(&sigAct, 0, sizeof(struct sigaction));
-        // // Initialise flags
-        // flagQuit = 0;
-
-        // sigAct.sa_handler = sigQuitHandler;
-        // sigaction(SIGQUIT, &sigAct, NULL);
-
-        // // // Add only certain signals in signalSet, will need them (to block when receiving commands)
-        // // sigemptyset(&signalSet);
-        // // sigaddset(&signalSet, SIGINT);
-        // // sigaddset(&signalSet, SIGQUIT);
-        // // sigaddset(&signalSet, SIGUSR1);
-
-        // // Unblock all signals
-        // sigemptyset(&set);
-        // if (sigprocmask(SIG_SETMASK, &set, NULL) == -1) {
-        //     perror("Error with setting signal mask");
-    // }
-
     static struct sigaction sigAct;
 
     sigfillset(&sigAct.sa_mask);
@@ -58,9 +30,6 @@ void handleSignals (void) {
     
     sigAct.sa_handler = sigUsr1Handler;
     sigaction(SIGUSR1, &sigAct, NULL);
-    
-    // sigAct.sa_handler = sigUsr2Handler;
-    // sigaction(SIGUSR2, &sigAct, NULL);
 }
 
 // Set INT flag
@@ -152,5 +121,39 @@ void checkSignalFlags (MonitorDir** monitorDir, int outfd, int bufSize, int bloo
         processUsr1(monitorDir, outfd, bufSize, bloomSize, dir_path, bloomsHead, stateHead, recordsHead, skipVaccHead, skipNonVaccHead);
         // Reset flag
         flagUsr1 = 0;
+    }
+}
+
+// Block signals
+void blockSignals (void) {
+    sigset_t set;
+
+    // Fill with SIGUSR1, SIGINT, SIGQUIT
+    sigemptyset(&set);
+    sigaddset(&set, SIGUSR1);
+    sigaddset(&set, SIGINT);
+    sigaddset(&set, SIGQUIT);
+
+    // Block them
+    if (sigprocmask(SIG_BLOCK, &set, NULL) == -1) {
+        perror("Error with setting signal blocks");
+        exit(1);
+    }
+}
+
+// Unblock signals
+void unblockSignals (void) {
+    sigset_t set;
+
+    // Fill with SIGUSR1, SIGINT, SIGQUIT
+    sigemptyset(&set);
+    sigaddset(&set, SIGUSR1);
+    sigaddset(&set, SIGINT);
+    sigaddset(&set, SIGQUIT);
+
+    // Unblock them
+    if (sigprocmask(SIG_UNBLOCK, &set, NULL) == -1) {
+        perror("Error with lifting signal blocks");
+        exit(1);
     }
 }

@@ -14,6 +14,7 @@
 
 int main(int argc, char* argv[]) {
     // Install signal handler
+    blockSignals();
     handleSignals();
 
     // Scan command line arguments
@@ -66,9 +67,13 @@ int main(int argc, char* argv[]) {
     free(firstMessage->body);
     free(firstMessage);
 
+
     while (1) {
         // Keep checking signal flags
+        blockSignals();
         checkSignalFlags(&monitorDir, outfd, bufSize, bloomSize, dir_path, &bloomsHead, &stateHead, &recordsHead, &skipVaccHead, &skipNonVaccHead, &accepted, &rejected);
+        unblockSignals();
+
         // Get incoming messages
         Message* incMessage = malloc(sizeof(Message));
         if (getMessage(incMessage, incfd, bufSize) == -1) {

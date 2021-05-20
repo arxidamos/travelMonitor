@@ -19,7 +19,7 @@ static volatile sig_atomic_t flagUsr1Parent = 0;
 static volatile sig_atomic_t flagChldParent = 0;
 
 // Wait for forked childs
-void waitChildMonitors (void) {
+void waitChildMonitors (Stats* stats, DIR* input_dir, char* dir_path, int bufSize, int bloomSize, int* readyMonitors, int numMonitors, int* readfd, int* writefd, ChildMonitor* childMonitor, int* accepted, int* rejected, BloomFilter* bloomsHead) {
     int status;
     pid_t pid;
     while (1) {
@@ -33,6 +33,11 @@ void waitChildMonitors (void) {
         }
         else {
             printf("...reaching parent - %lu  with return code %d \n",(long)pid, status);
+            // Create log file
+            createLogFileParent (numMonitors, childMonitor, accepted, rejected);
+            // Deallocate memory
+            exitApp(stats, input_dir, dir_path, bufSize, bloomSize, readyMonitors, numMonitors, readfd, writefd, childMonitor, accepted, rejected, bloomsHead);
+            return;
         }
     }
 }
@@ -45,38 +50,37 @@ void handleSignalsParent (void) {
     sigAct.sa_handler = sigUsr1HandlerParent;
     sigaction(SIGUSR1, &sigAct, NULL);
 
-    sigAct.sa_handler = sigChldHandlerParent;
-    sigaction(SIGCHLD, &sigAct, NULL);
-
     sigAct.sa_handler = sigIntHandlerParent;
     sigaction(SIGINT, &sigAct, NULL);
 
     sigAct.sa_handler = sigQuitHandlerParent;
     sigaction(SIGQUIT, &sigAct, NULL);        
 
+    sigAct.sa_handler = sigChldHandlerParent;
+    sigaction(SIGCHLD, &sigAct, NULL);
 }
 
 // Set USR1 flag
 void sigUsr1HandlerParent (int sigNum) {
-    printf("Caught a SIGUSR1 in parent\n");
+    printf("Parent caught a SIGUSR1\n");
     flagUsr1Parent = 1;
 }
 
 // Set INT flag
 void sigIntHandlerParent (int sigNum) {
-    printf("Caught a SIGINT in parent\n");
+    printf("Parent caught a SIGINT\n");
     flagIntParent = 1;
 }
 
 // Set QUIT flag
 void sigQuitHandlerParent (int sigNum) {
-    printf("Caught a SIGQUIT in parent\n");
+    printf("Parent caught a SIGQUIT\n");
     flagQuitParent = 1;
 }
 
 // Set CHLD flag
-void sigChldHandlerParent(int sigNum) {
-    printf("Caught a SIGCHLD in parent\n");
+void sigChldHandlerParent (int sigNum) {
+    printf("Parent caught a SIGCHLD\n");
     flagChldParent = 1;
 }
 
@@ -117,30 +121,70 @@ int checkSignalFlagsParent (Stats* stats, DIR* input_dir, char* dir_path, int bu
     if (flagQuitParent == 1 || flagIntParent == 1) {
         // Send SIGKILL signal to every child
         for (int i = 0; i < numMonitors; ++i) {
-            printf("SIGKILL sent to child\n");
+            printf("SIGKILL sent to child %d.\n", (int)childMonitor[i].pid);
             kill(childMonitor[i].pid, SIGKILL);
         }
 
         int status;
         pid_t pid;
         while (1) {
-        // -1: wait any child to end, status: child's return status, WNOHANG: don't suspend caller
-            pid = waitpid(-1, &status, WNOHANG);
-            if (pid == 0) {
-                return 0;
+            for (int i = 0; i < numMonitors; ++i) {
+                // -1: wait any child to end, status: child's return status, 0: suspend caller
+                pid = waitpid(-1, &status, 0);
+                if (pid == 0) {
+                    return 0;
+                }
+                else if (pid == -1) {
+                    return 0;
+                }
+                else {
+                    printf("Monitor reaching parent - %lu, return code %d \n",(long)pid, status);
+                }
             }
-            else if (pid == -1) {
-                return 0;
-            }
-            else {
-                printf("...reaching parent - %lu  with return code %d \n",(long)pid, status);
-                // Create log file
-                createLogFileParent (numMonitors, childMonitor, accepted, rejected);
-                // Deallocate memory
-                exitApp(stats, input_dir, dir_path, bufSize, bloomSize, readyMonitors, numMonitors, readfd, writefd, childMonitor, accepted, rejected, bloomsHead);
-                return 1;
-            }
+            // Create log file
+            createLogFileParent (numMonitors, childMonitor, accepted, rejected);
+            // Deallocate memory
+            exitApp(stats, input_dir, dir_path, bufSize, bloomSize, readyMonitors, numMonitors, readfd, writefd, childMonitor, accepted, rejected, bloomsHead);
+            printf("Goodbye!\n");
+            return 1;
+            
         }
     }
     return 0;
+}
+
+// Block signals
+void blockSignalsParent (void) {
+    sigset_t set;
+
+    // Fill with SIGUSR1, SIGINT, SIGQUIT
+    sigemptyset(&set);
+    sigaddset(&set, SIGUSR1);
+    sigaddset(&set, SIGINT);
+    sigaddset(&set, SIGQUIT);
+    // sigaddset(&set, SIGCHLD);
+
+    // Block them
+    if (sigprocmask(SIG_BLOCK, &set, NULL) == -1) {
+        perror("Error with setting signal blocks");
+        exit(1);
+    }
+}
+
+// Unblock signals
+void unblockSignalsParent (void) {
+    sigset_t set;
+
+    // Fill with SIGUSR1, SIGINT, SIGQUIT
+    sigemptyset(&set);
+    sigaddset(&set, SIGUSR1);
+    sigaddset(&set, SIGINT);
+    sigaddset(&set, SIGQUIT);
+    // sigaddset(&set, SIGCHLD);
+
+    // Unblock them
+    if (sigprocmask(SIG_UNBLOCK, &set, NULL) == -1) {
+        perror("Error with lifting signal blocks");
+        exit(1);
+    }
 }
