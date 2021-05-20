@@ -13,6 +13,7 @@ void travelRequest (Stats* stats, int* readyMonitors, BloomFilter* head, ChildMo
     unsigned int set = 1; // All 0s and leftmost bit=1
     int x;
 
+    // Add data to structure
     addToStats(stats, virus, countryTo, date);
 
     while (current) {
@@ -30,8 +31,9 @@ void travelRequest (Stats* stats, int* readyMonitors, BloomFilter* head, ChildMo
                 // Check if bitArray has *1* in the same spot
                 if ((current->bitArray[x/32] & set) == 0) {
                     printf("REQUEST REJECTED - YOU ARE NOT VACCINATED\n");
-                    (*rejected)++;                    
+                    (*rejected)++;
 
+                    // Add hit or miss to structure
                     informStats(stats, MISS);
 
                     // Send increment counter message
@@ -60,7 +62,7 @@ void travelRequest (Stats* stats, int* readyMonitors, BloomFilter* head, ChildMo
                         strcat(fullString, virus);
                         strcat(fullString, ";");
                         strcat(fullString, countryTo);
-                        strcat(fullString, ";");                        
+                        strcat(fullString, ";");
                         strcat(fullString, dateString);
 
                         // Send citizenID, date to Monitor
@@ -113,7 +115,6 @@ void travelStats (Stats stats, char* virus, Date date1, Date date2, char* countr
             }
         }
     }
-
     printf("TOTAL REQUESTS %d\nACCEPTED %d\nREJECTED %d\n", total, accepted, rejected);
 }
 

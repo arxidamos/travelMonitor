@@ -144,13 +144,6 @@ int main(int argc, char **argv) {
 
     // Assign countries to each Monitor, round-robin
     mapCountryDirs(dir_path, numMonitors, writefd, childMonitor, bufferSize);
-    for (int i=0; i<numMonitors; i++) {
-        printf("Monitor %d with countries:", i);
-        for (int j=0; j<childMonitor[i].countryCount; j++) {
-            printf(" %s,", childMonitor[i].country[j]);
-        }
-        printf("\n");
-    }
 
     // Check any blocked messages
     unblockSignalsParent();

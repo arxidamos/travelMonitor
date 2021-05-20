@@ -17,7 +17,6 @@ MonitorDir* insertDir (MonitorDir** head, DIR* dir, char* country, char* files[]
     newNode->country = malloc(strlen(country)+1);
     strcpy(newNode->country, country);
 
-    
     newNode->fileCount = fileCount;
 
     newNode->files = malloc(sizeof(char*)*newNode->fileCount);

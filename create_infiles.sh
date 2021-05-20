@@ -39,7 +39,7 @@ fi
 # Store arguments
 inputFile=$1
 input_dir=$2
-numFilesPerDirectory=$3
+numFilesPerDirectory=$(($3-1))
 # Associative array to store countries and find which country's file (0, 1, ...) to write next
 declare -A countries
 
@@ -94,12 +94,12 @@ do
     cd $input_dir
 
     # Move into country's dir
-    cd $country     
+    cd $country
 
-    #  Iterate through stored countries and their file numbers
+    # Iterate through stored countries and their file numbers
     for item in "${!countries[@]}"
     do
-        #  Match current record's country
+        # Match current record's country
         if [[ $country == $item ]]
         then
             # Return next number to be used for file writing
@@ -123,26 +123,3 @@ do
     # Move back into initial dir
     cd ../../
 done < $inputFile
-
-
-#  TESTING
-# for each in "${!next[@]}"
-# do
-#     echo "key   : " $each
-#     echo "number: " ${next[$each]}
-# done
-
-# for each in "${!next[@]}"
-# do
-#     ((next[$each]++))
-# done
-
-# for each in "${!next[@]}"
-# do
-#     echo "key   : " $each
-#     echo "number: " ${next[$each]}
-# done
-
-
-
-

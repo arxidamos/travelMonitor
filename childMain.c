@@ -35,7 +35,7 @@ int main(int argc, char* argv[]) {
     if ( (incfd = open(pipeRead, O_RDONLY)) == -1 ) {
         perror("Problem opening reading pipe");
         exit(1);
-    }    
+    }
    
     // Structure to store Monitor's directory info
     MonitorDir* monitorDir = NULL;
@@ -66,7 +66,6 @@ int main(int argc, char* argv[]) {
     free(firstMessage->code);
     free(firstMessage->body);
     free(firstMessage);
-
 
     while (1) {
         // Keep checking signal flags

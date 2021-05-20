@@ -18,7 +18,7 @@ static volatile sig_atomic_t flagIntParent = 0;
 static volatile sig_atomic_t flagUsr1Parent = 0;
 static volatile sig_atomic_t flagChldParent = 0;
 
-// Wait for forked childs
+// Wait for forked childs (didn't use it)
 void waitChildMonitors (Stats* stats, DIR* input_dir, char* dir_path, int bufSize, int bloomSize, int* readyMonitors, int numMonitors, int* readfd, int* writefd, ChildMonitor* childMonitor, int* accepted, int* rejected, BloomFilter* bloomsHead) {
     int status;
     pid_t pid;
@@ -32,7 +32,7 @@ void waitChildMonitors (Stats* stats, DIR* input_dir, char* dir_path, int bufSiz
             return;
         }
         else {
-            printf("...reaching parent - %lu  with return code %d \n",(long)pid, status);
+            printf("...reaching parent - %lu with return code %d \n",(long)pid, status);
             // Create log file
             createLogFileParent (numMonitors, childMonitor, accepted, rejected);
             // Deallocate memory
@@ -54,7 +54,7 @@ void handleSignalsParent (void) {
     sigaction(SIGINT, &sigAct, NULL);
 
     sigAct.sa_handler = sigQuitHandlerParent;
-    sigaction(SIGQUIT, &sigAct, NULL);        
+    sigaction(SIGQUIT, &sigAct, NULL);
 
     sigAct.sa_handler = sigChldHandlerParent;
     sigaction(SIGCHLD, &sigAct, NULL);

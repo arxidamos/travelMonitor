@@ -45,7 +45,6 @@ void informStats (Stats* stats, int hitMiss) {
 
 // Deallocate memory
 void freeStats(Stats* stats) {
-
     for (int i=0; i<(*stats).count; i++) {
         free((*stats).country[i]);
         free((*stats).virus[i]);

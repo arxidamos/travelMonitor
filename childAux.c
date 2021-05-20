@@ -69,7 +69,7 @@ void analyseMessage (MonitorDir** monitorDir, Message* message, int outfd, int* 
         *monitorDir = insertDir(monitorDir, dir, message->body, files, filesCount);
         free(files);
         return;
-    }    
+    }
     // Message 'F': Parent finishes assigning. Create structures - send Bloom Filters. 
     else if (message->code[0] == 'F') {
         // Initialize variables
@@ -241,7 +241,6 @@ void analyseMessage (MonitorDir** monitorDir, Message* message, int outfd, int* 
         free(message->code);
         free(message->body);
         free(message);
-
     }
     // Message 't': Parent sends travelRequest query
     else if (message->code[0] == 't') {
@@ -298,7 +297,7 @@ void analyseMessage (MonitorDir** monitorDir, Message* message, int outfd, int* 
 
 // Read new file in directory after SIGUSR1
 void processUsr1(MonitorDir** monitorDir, int outfd, int bufSize, int bloomSize, char* dir_path, BloomFilter** bloomsHead, State** stateHead, Record** recordsHead, SkipList** skipVaccHead, SkipList** skipNonVaccHead) {
-    // Iterate through both MonitorDir's directories and the actual directories    
+    // Iterate through both MonitorDir's directories and the actual directories
     MonitorDir* current = (*monitorDir);
     while(current) {
         // Get each dir's files alphabetically
@@ -496,8 +495,8 @@ void updateParentBlooms(BloomFilter* bloomsHead, int outfd, int bufSize) {
             // Store only non zero indices
             if ( current->bitArray[i] != 0) {
                 indices = realloc(indices, (length+2)*sizeof(int));
-                indices[length] = i;    // Save indexSize
-                indices[length+1] = current->bitArray[i];   // Save content
+                indices[length] = i; // Save indexSize
+                indices[length+1] = current->bitArray[i]; // Save content
                 length += 2;
             }
         }
